@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>GoudAI Chat — Connexion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#080709">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap');
+
+    :root {
+      --bg:           #080709;
+      --surface:      #0f0e13;
+      --surface-2:    #141218;
+      --border:       #201d28;
+      --border-input: #2c2836;
+      --text:         #ece7e0;
+      --text-sec:     #7c7180;
+      --text-muted:   #3e3848;
+      --accent:       #c4881e;
+      --accent-b:     #dfa040;
+      --accent-soft:  rgba(196,136,30,.12);
+      --accent-glow:  rgba(196,136,30,.22);
+      --error:        #f87171;
+      --error-bg:     rgba(248,113,113,.1);
+    }
+
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height:100%; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Ambient glow background */
+    body::before {
+      content: '';
+      position: fixed;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(196,136,30,.06) 0%, transparent 70%);
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    body::after {
+      content:'';
+      position:fixed; inset:0;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+      pointer-events:none; opacity:.4; z-index:0;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 420px;
+      position: relative;
+      z-index: 1;
+      box-shadow: 0 32px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.03);
+    }
+    /* Gold top accent */
+    .card::before {
+      content:''; position:absolute; top:0; left:20%; right:20%; height:1.5px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      border-radius:99px; opacity:.7;
+    }
+
+    .logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.4rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      color: var(--text);
+      text-align: center;
+      margin-bottom: 4px;
+      line-height: 1;
+    }
+    .logo span { color: var(--accent); }
+    .tagline {
+      text-align: center;
+      font-size: .75rem;
+      color: var(--text-muted);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .tab-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      padding: 9px;
+      font-family: 'Outfit', sans-serif;
+      font-size: .8rem;
+      font-weight: 500;
+      letter-spacing: .04em;
+      cursor: pointer;
+      color: var(--text-sec);
+      transition: background .15s, color .15s;
+    }
+    .tab-btn.active {
+      background: var(--accent-soft);
+      color: var(--accent-b);
+    }
+
+    /* Form */
+    .form { display: flex; flex-direction: column; gap: 14px; }
+    .form.hidden { display: none; }
+
+    label {
+      font-size: .68rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      display: block;
+      margin-bottom: 5px;
+    }
+    input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border-input);
+      border-radius: 10px;
+      padding: 10px 13px;
+      font-family: 'Outfit', sans-serif;
+      font-size: .9rem;
+      color: var(--text);
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    input::placeholder { color: var(--text-muted); }
+
+    .submit-btn {
+      background: var(--accent);
+      color: #08070a;
+      border: none;
+      border-radius: 11px;
+      padding: 11px;
+      font-family: 'Outfit', sans-serif;
+      font-size: .88rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s, box-shadow .15s;
+      margin-top: 4px;
+    }
+    .submit-btn:hover:not(:disabled) {
+      opacity: .88;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px var(--accent-glow);
+    }
+    .submit-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+    /* Google OAuth button */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 4px 0;
+      font-size: .72rem;
+      color: var(--text-muted);
+      letter-spacing: .06em;
+    }
+    .divider::before, .divider::after {
+      content:''; flex:1; height:1px; background:var(--border);
+    }
+
+    .google-btn {
+      width: 100%;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 10px 14px;
+      font-family: 'Outfit', sans-serif;
+      font-size: .86rem;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .google-btn:hover { background: #1c1a22; border-color: #3a364a; }
+    .google-btn svg { flex-shrink: 0; }
+
+    /* Error / success */
+    .alert {
+      padding: 10px 13px;
+      border-radius: 9px;
+      font-size: .82rem;
+      display: none;
+    }
+    .alert.error { background: var(--error-bg); color: var(--error); border: 1px solid rgba(248,113,113,.2); display: block; }
+    .alert.success { background: rgba(74,222,128,.1); color: #4ade80; border: 1px solid rgba(74,222,128,.2); display: block; }
+
+    /* Loading spinner */
+    .spin {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(8,7,10,.3);
+      border-top-color: #08070a;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Error from URL param */
+    .url-error {
+      background: var(--error-bg);
+      color: var(--error);
+      border: 1px solid rgba(248,113,113,.2);
+      border-radius: 9px;
+      padding: 10px 13px;
+      font-size: .82rem;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    @media (max-width: 480px) {
+      .card { padding: 28px 20px; border-radius: 16px; }
+      .logo { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <div class="logo">🦊 Goud<span>A</span>I</div>
+    <div class="tagline">Le chat Multi-IA</div>
+
+    <!-- URL error (google failed etc) -->
+    <div class="url-error" id="url-error"></div>
+
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-login" onclick="switchTab('login')">Connexion</button>
+      <button class="tab-btn" id="tab-register" onclick="switchTab('register')">Inscription</button>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <form class="form" id="form-login" onsubmit="handleLogin(event)">
+      <div class="alert" id="login-alert"></div>
+      <div>
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" placeholder="vous@exemple.fr" autocomplete="email" required>
+      </div>
+      <div>
+        <label for="login-password">Mot de passe</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="submit-btn" id="login-btn">Connexion</button>
+      <div class="divider">OU</div>
+      <a class="google-btn" href="/auth/google">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Se connecter avec Google
+      </a>
+    </form>
+
+    <!-- REGISTER FORM -->
+    <form class="form hidden" id="form-register" onsubmit="handleRegister(event)">
+      <div class="alert" id="register-alert"></div>
+      <div>
+        <label for="reg-username">Nom d'utilisateur</label>
+        <input type="text" id="reg-username" placeholder="VotreNom" autocomplete="username" required minlength="2">
+      </div>
+      <div>
+        <label for="reg-email">Email</label>
+        <input type="email" id="reg-email" placeholder="vous@exemple.fr" autocomplete="email" required>
+      </div>
+      <div>
+        <label for="reg-password">Mot de passe</label>
+        <input type="password" id="reg-password" placeholder="8 caractères minimum" autocomplete="new-password" required minlength="8">
+      </div>
+      <button type="submit" class="submit-btn" id="register-btn">Créer mon compte</button>
+      <div class="divider">OU</div>
+      <a class="google-btn" href="/auth/google">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        S'inscrire avec Google
+      </a>
+    </form>
+  </div>
+
+  <script>
+    // Check URL params
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('error') === 'google_denied') {
+      document.getElementById('url-error').textContent = 'Connexion Google annulée.';
+      document.getElementById('url-error').style.display = 'block';
+    } else if (params.get('error') === 'google_failed') {
+      document.getElementById('url-error').textContent = 'Erreur lors de la connexion Google. Réessayez.';
+      document.getElementById('url-error').style.display = 'block';
+    }
+
+    function switchTab(tab) {
+      document.getElementById('form-login').classList.toggle('hidden', tab !== 'login');
+      document.getElementById('form-register').classList.toggle('hidden', tab !== 'register');
+      document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+      document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+    }
+
+    function showAlert(id, msg, type = 'error') {
+      const el = document.getElementById(id);
+      el.textContent = msg;
+      el.className = 'alert ' + type;
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const btn = document.getElementById('login-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spin"></span> Connexion…';
+      showAlert('login-alert', '', '');
+
+      try {
+        const res = await fetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            email:    document.getElementById('login-email').value,
+            password: document.getElementById('login-password').value,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showAlert('login-alert', data.error || 'Erreur de connexion');
+          btn.disabled = false;
+          btn.textContent = 'Connexion';
+        } else {
+          showAlert('login-alert', 'Connexion réussie !', 'success');
+          setTimeout(() => window.location.href = '/app', 600);
+        }
+      } catch {
+        showAlert('login-alert', 'Impossible de contacter le serveur');
+        btn.disabled = false;
+        btn.textContent = 'Connexion';
+      }
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      const btn = document.getElementById('register-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spin"></span> Création…';
+      showAlert('register-alert', '', '');
+
+      try {
+        const res = await fetch('/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            email:    document.getElementById('reg-email').value,
+            username: document.getElementById('reg-username').value,
+            password: document.getElementById('reg-password').value,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showAlert('register-alert', data.error || 'Erreur lors de l\'inscription');
+          btn.disabled = false;
+          btn.textContent = 'Créer mon compte';
+        } else {
+          showAlert('register-alert', 'Compte créé ! Redirection…', 'success');
+          setTimeout(() => window.location.href = '/app', 800);
+        }
+      } catch {
+        showAlert('register-alert', 'Impossible de contacter le serveur');
+        btn.disabled = false;
+        btn.textContent = 'Créer mon compte';
+      }
+    }
+  </script>
+
+
+
+<script>
+(function() {
+    var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    var isStandalone = window.navigator.standalone === true;
+    if (!isIOS || isStandalone) return;
+    if (localStorage.getItem("pwa-ios-shown")) return;
+    setTimeout(function() {
+        var d = document.createElement("div");
+        d.style.cssText = "position:fixed;bottom:20px;left:12px;right:12px;background:#1a1724;border:1px solid #c9a84c;border-radius:12px;padding:14px;z-index:99999;color:#e0d0b0;font-size:13px;box-shadow:0 8px 32px rgba(0,0,0,0.6);display:flex;align-items:center;gap:10px";
+        var closeBtn = document.createElement("button");
+        closeBtn.textContent = "×";
+        closeBtn.style.cssText = "background:none;border:none;color:#c9a84c;font-size:22px;cursor:pointer;line-height:1";
+        closeBtn.onclick = function() { d.remove(); localStorage.setItem("pwa-ios-shown", "1"); };
+        var icon = document.createElement("span");
+        icon.textContent = "📱";
+        icon.style.fontSize = "22px";
+        var text = document.createElement("span");
+        text.style.flex = "1";
+        text.innerHTML = "Installez GoudAI : appuyez sur <b>Partager</b> puis <b>Sur l'écran d'accueil</b>";
+        d.appendChild(icon);
+        d.appendChild(text);
+        d.appendChild(closeBtn);
+        document.body.appendChild(d);
+    }, 1000);
+})();
+</script>
+
+</body>
+</html>

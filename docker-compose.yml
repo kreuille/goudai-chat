@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  goudai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: goudai-app
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    env_file:
+      - .env
+    volumes:
+      - ./data/goudai-secrets:/etc/goudai:ro
+      - ./data/conversations:/app/data/conversations
+    networks:
+      - n8n-docker_default
+      - goudai-internal
+
+networks:
+  n8n-docker_default:
+    external: true          # ← réseau existant de NPM
+  goudai-internal:
+    driver: bridge

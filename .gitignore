@@ -1,0 +1,50 @@
+# ── Secrets & env ────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.env.local
+
+# Google service account & toute clé JSON sensible
+service-account.json
+*service-account*.json
+*-credentials.json
+*.key
+*.pem
+*.p12
+
+# ── Données runtime (vivent uniquement sur le VPS) ───────────────
+data/conversations/
+data/goudai-secrets/
+frontend/data/goudai-secrets/
+
+# ── Node ─────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.pnp.*
+.yarn/
+
+# ── Logs ─────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── OS / éditeurs ────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Build / cache ────────────────────────────────────────────────
+dist/
+build/
+.cache/
+coverage/
+
+# ── Docker ───────────────────────────────────────────────────────
+docker-compose.override.yml
