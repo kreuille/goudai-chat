@@ -48,3 +48,8 @@ coverage/
 
 # ── Docker ───────────────────────────────────────────────────────
 docker-compose.override.yml
+
+# ── Documentation (hors repo) ────────────────────────────────────
+*.docx
+*.doc
+*.pdf

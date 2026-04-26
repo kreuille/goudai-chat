@@ -1,252 +1,186 @@
-# 🦊 GoudAI Chat
+# 🧀 GoudAI Chat
 
-Stack : **Node.js / Express + Vanilla JS** — déployé en **Docker Compose** sur VPS Ionos, derrière un reverse-proxy Nginx (NPM) avec Google Sheets (DB) et Google Drive (fichiers utilisateurs).
+Application web de chat multi-IA — interface unique pour 7 providers (OpenAI, Anthropic, Google, Mistral, xAI, DeepSeek, Perplexity).
+
+- **Production** : https://goudai.guedou.com
+- **Stack** : Node.js / Express + Vanilla JS — Docker Compose sur VPS Ionos
+- **Auth** : Google OAuth2 + JWT (cookie httpOnly `goudai_token`) · **DB users** : Google Sheets · **Stockage** : filesystem local
 
 ---
 
-## 🚀 Workflow de développement
-
-### Setup initial (une seule fois)
+## 🚀 Démarrage rapide (dev local)
 
 ```bash
 git clone git@github.com:<ton-user>/goudai-chat.git
 cd goudai-chat
-cp .env.example .env       # remplir les valeurs réelles (jamais commit)
-```
-
-### Modèle de branches
-
-| Branche | Rôle |
-|---------|------|
-| `main`  | Production — déclenche le déploiement sur le VPS |
-| `dev`   | Intégration — branche de travail courante |
-| `feat/*`, `fix/*` | Branches éphémères, mergées dans `dev` via PR |
-
-```
-feat/xxx ──► dev ──► main ──► (deploy.sh sur VPS)
-```
-
-### Cycle quotidien
-
-```bash
 git checkout dev
-git pull
-git checkout -b feat/ma-feature
-# ... code ...
-git add . && git commit -m "feat: …"
-git push -u origin feat/ma-feature
-# Ouvrir une PR vers dev sur GitHub
+
+cp .env.example .env      # remplir les valeurs (jamais commiter)
+cd server && npm install
+node index.js             # serveur sur http://localhost:3001
 ```
 
-Quand `dev` est stable → PR `dev` → `main` → déploiement.
-
-### Déploiement en production
-
-```bash
-ssh goudai-vps
-cd /root/goudai-chat
-./deploy.sh
-```
-
-Le script `deploy.sh` (présent sur le VPS, **pas dans Git**) :
-1. `git pull origin main`
-2. `docker compose down`
-3. `docker compose build --no-cache`
-4. `docker compose up -d`
-
-### Données persistantes (jamais dans Git)
-
-- `data/conversations/` → conversations utilisateur (volume Docker, **VPS only**)
-- `data/goudai-secrets/service-account.json` → clé GCP (montée en `/etc/goudai:ro`)
-- `.env` → secrets runtime
-
-Voir [.gitignore](.gitignore) et [.env.example](.env.example).
+Ouvrir http://localhost:3001 dans le navigateur.
 
 ---
 
-## ⚙️ Setup historique (PM2 / Nginx, pré-Docker)
+## 🌿 Workflow Git
 
-> *Conservé à titre de référence. Le déploiement actuel se fait via Docker Compose (voir section ci-dessus).*
+```
+feature/* ──► dev ──► main ──► (deploy.sh sur VPS)
+```
 
-## Architecture
+| Branche | Rôle |
+|---------|------|
+| `main` | Production — VPS tire depuis ici |
+| `dev` | Intégration — branche de base de tout développement |
+| `feature/*` `fix/*` `chore/*` | Branches éphémères, mergées dans `dev` |
+
+```bash
+# Cycle quotidien
+git checkout dev && git pull
+git checkout -b feature/ma-feature
+# ... coder, tester localement ...
+git add -p && git commit -m "feat(scope): description"
+git checkout dev && git merge feature/ma-feature --no-ff
+git push origin dev
+```
+
+Voir `.claude/skills/goudai-git/SKILL.md` pour les conventions de commit.
+
+---
+
+## 🚢 Déploiement en production
+
+```bash
+# Sur le VPS (ou via SSH)
+ssh root@87.106.213.25
+cd /root/goudai-chat
+./deploy.sh          # git pull main + docker rebuild + restart
+```
+
+Le script vérifie la présence du `.env` et du `service-account.json` avant de déployer.
+Voir `.claude/skills/goudai-deploy/SKILL.md` pour la procédure complète.
+
+---
+
+## 🏗️ Architecture
 
 ```
 Internet
    │
    ▼
-Nginx (443 HTTPS) ─── /              → frontend/index.html  (login)
-   │                  /app           → frontend/app.html    (chat)
-   │                  /auth/*  ─────► Node.js :3001
-   │                  /api/*   ─────►    │
-   │                                     │── Google Sheets  (users DB)
-   │                                     └── Google Drive   (JSONs/user)
-   ▼
-Let's Encrypt SSL
+Nginx Proxy Manager (443 HTTPS / Let's Encrypt)
+   │
+   ├── /              → frontend/index.html  (login)
+   ├── /app           → frontend/app.html    (chat)
+   ├── /auth/*  ─────► Node.js :3001
+   └── /api/*   ─────► Node.js :3001
+                           │
+                           ├── Google Sheets  (users + clés API chiffrées)
+                           └── filesystem     (conversations JSON — via drive.js)
+```
+
+**Note** : les appels aux APIs IA (OpenAI, Anthropic, etc.) se font **directement depuis le navigateur**, pas via le serveur Node.js.
+
+---
+
+## 📁 Structure du projet
+
+```
+goudai/
+├── .claude/              ← Skills Claude Code (git, deploy, security…)
+├── frontend/             ← App web statique (pas de bundler)
+│   ├── app.html          ← Page principale (?v= à incrémenter après chaque modif JS/CSS)
+│   ├── models.js         ← Définition modèles et tarifs
+│   ├── css/style.css     ← Design system KIRO (dark/light)
+│   └── js/
+│       ├── app.js        ← Logique principale (4111 lignes)
+│       ├── api.js        ← Appels APIs IA (streaming direct navigateur → provider)
+│       ├── canvas.js     ← Mode canvas / split view
+│       └── ...
+├── server/               ← API Node.js/Express
+│   ├── index.js          ← Point d'entrée (helmet, rate-limit, routes)
+│   ├── routes/           ← auth, user, conversations, userdata
+│   └── services/         ← sheets, crypto (AES-256-GCM), drive (filesystem local)
+├── data/                 ← Runtime VPS uniquement — jamais dans Git
+├── deploy.sh             ← Script de déploiement VPS
+├── docker-compose.yml
+└── .env.example          ← Template variables d'environnement
 ```
 
 ---
 
-## Prérequis Google Cloud
+## 🔐 Variables d'environnement
 
-### 1. Créer un projet Google Cloud
-Aller sur https://console.cloud.google.com → Nouveau projet → "GoudAI Chat"
+Copier `.env.example` → `.env` et remplir :
 
-### 2. Activer les APIs
-APIs & Services → Bibliothèque → Activer :
-- **Google Sheets API**
-- **Google Drive API**
-- **Google People API** (pour OAuth profil)
-
-### 3. Service Account (pour Sheets + Drive côté serveur)
-1. IAM & Admin → Comptes de service → Créer
-2. Nom : `goudai-backend`
-3. Rôle : Editor (ou roles personnalisés)
-4. Créer une clé JSON → télécharger → renommer `service-account.json`
-5. **Copier l'email** du service account (ex: `goudai-backend@monprojet.iam.gserviceaccount.com`)
-
-### 4. Google Sheets (base de données)
-1. Aller sur https://sheets.google.com → Nouveau classement
-2. Nommer : `GoudAI Chat Users`
-3. Renommer l'onglet en `Users`
-4. **Partager** avec l'email du service account → rôle **Éditeur**
-5. Copier l'**ID du Sheet** dans l'URL : `/spreadsheets/d/**ID**/edit`
-
-### 5. Google Drive (dossier racine des conversations)
-1. Aller sur https://drive.google.com → Nouveau dossier
-2. Nommer : `GoudAI-Users`
-3. **Partager** avec l'email du service account → rôle **Éditeur**
-4. Ouvrir le dossier → copier l'**ID dans l'URL** : `/drive/folders/**ID**`
-
-### 6. OAuth2 (connexion "Se connecter avec Google")
-1. APIs & Services → Identifiants → Créer des identifiants → ID client OAuth2
-2. Type : **Application Web**
-3. Nom : `GoudAI Chat Web`
-4. Origines autorisées : `https://goudai.tondomaine.fr`
-5. URI de redirection : `https://goudai.tondomaine.fr/auth/google/callback`
-6. Copier **Client ID** et **Client Secret**
+| Variable | Description |
+|----------|-------------|
+| `JWT_SECRET` | 64 chars hex — `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` |
+| `ENCRYPTION_KEY` | 32 bytes hex — `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `GOOGLE_CLIENT_ID/SECRET` | OAuth2 depuis Google Cloud Console |
+| `GOOGLE_SERVICE_ACCOUNT_KEY_PATH` | Chemin vers `service-account.json` |
+| `GOOGLE_SHEET_ID` | ID du Google Sheet (base utilisateurs) |
+| `CONV_STORAGE_PATH` | Dossier conversations (`/app/data/conversations` en Docker) |
+| `FRONTEND_URL` | URL du frontend (pour CORS) — ex: `https://goudai.guedou.com` |
 
 ---
 
-## Installation VPS (Ubuntu 22.04+)
+## ☁️ Setup Google Cloud (première installation)
 
-### Étape 1 — Uploader les fichiers
+### 1. APIs à activer
+Console GCP → APIs & Services → Bibliothèque :
+- Google Sheets API
+- Google People API (profil OAuth)
 
-```bash
-# Depuis ta machine locale
-scp -r goudai-full/ root@IP_VPS:/tmp/goudai-install/
-```
+### 2. Service Account (accès Sheets côté serveur)
+IAM & Admin → Comptes de service → Créer → rôle Éditeur → clé JSON → `service-account.json`
 
-### Étape 2 — Lancer le script d'installation
+Copier l'**email** du service account, puis partager le Google Sheet avec cet email (rôle Éditeur).
 
-```bash
-ssh root@IP_VPS
-cd /tmp/goudai-install
-bash setup/install.sh goudai.tondomaine.fr
-```
-
-Le script installe : Node.js 20, Nginx, Certbot, PM2, et déploie l'app.
-
-### Étape 3 — Configurer les variables d'environnement
-
-```bash
-cp /var/www/goudai/server/.env.example /var/www/goudai/server/.env
-nano /var/www/goudai/server/.env
-```
-
-Remplir **toutes** les valeurs :
-
-```env
-PORT=3001
-NODE_ENV=production
-FRONTEND_URL=https://goudai.tondomaine.fr
-
-# Générer avec : node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
-JWT_SECRET=<64 caractères hex>
-
-# Générer avec : node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-ENCRYPTION_KEY=<32 bytes hex>
-
-GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=GOCSPX-xxx
-GOOGLE_REDIRECT_URI=https://goudai.tondomaine.fr/auth/google/callback
-
-GOOGLE_SERVICE_ACCOUNT_KEY_PATH=/etc/goudai/service-account.json
-GOOGLE_SHEET_ID=<ID du Google Sheet>
-GOOGLE_DRIVE_ROOT_FOLDER_ID=<ID du dossier Drive>
-```
-
-### Étape 4 — Copier le Service Account
-
-```bash
-# Uploader depuis ta machine locale
-scp service-account.json root@IP_VPS:/etc/goudai/service-account.json
-
-# Sur le VPS
-chmod 600 /etc/goudai/service-account.json
-chown root:root /etc/goudai/service-account.json
-```
-
-### Étape 5 — Démarrer
-
-```bash
-cd /var/www/goudai
-pm2 start ecosystem.config.js
-pm2 save
-pm2 logs goudai-server  # Vérifier que ça démarre bien
-```
-
-### Étape 6 — Vérifier
-
-```bash
-curl https://goudai.tondomaine.fr/health
-# Doit retourner: {"ok":true,"version":"1.0.0"}
-```
-
-Ouvrir https://goudai.tondomaine.fr → page de connexion GoudAI Chat 🎉
+### 3. OAuth2 (connexion Google)
+APIs & Services → Identifiants → ID client OAuth2 → Application Web  
+URI de redirection autorisée : `https://goudai.guedou.com/auth/google/callback`
 
 ---
 
-## Mise à jour de l'app
+## 🗂️ Structure Google Sheets — Onglet `Users`
+
+11 colonnes (A → K) :
+
+| id | email | username | password_hash | google_id | avatar_url | drive_folder_id | api_keys_enc | preferences_enc | created_at | last_login |
+|----|----|----|----|----|----|----|----|----|----|----|
+
+- `drive_folder_id` : identifiant du dossier conversations sur le **filesystem local** (`CONV_STORAGE_PATH/{drive_folder_id}/`)
+- `api_keys_enc` : JSON `{openai, anthropic, google, perplexity}` chiffré AES-256-GCM
+- `preferences_enc` : JSON `{theme, defaultModels, ...}` chiffré AES-256-GCM
+
+> **Note** : malgré son nom, `drive.js` gère le **filesystem local**, pas Google Drive.
+
+---
+
+## 🛡️ Sécurité
+
+- **Clés API** : chiffrées AES-256-GCM avant stockage Sheets (`server/services/crypto.js`) — format `iv:authTag:ciphertext` (hex)
+- **JWT** : cookie httpOnly `goudai_token`, 30 jours, secret 256 bits minimum
+- **Rate limiting** : 20 req/15min sur `/auth`, 120 req/min sur `/api`
+- **Headers** : helmet.js activé (CSP géré par Nginx)
+- **Règle absolue** : `.env` et `service-account.json` ne sont jamais dans Git
+
+Voir `.claude/skills/goudai-security/SKILL.md` pour la checklist complète.
+
+---
+
+## 🩺 Debug rapide
 
 ```bash
-# Uploader les nouveaux fichiers
-scp -r frontend/ root@IP_VPS:/var/www/goudai/
-scp -r server/ root@IP_VPS:/var/www/goudai/
+# Santé du serveur
+curl https://goudai.guedou.com/health   # → {"ok":true}
 
-# Redémarrer sur le VPS
-ssh root@IP_VPS "cd /var/www/goudai/server && npm install --production && pm2 restart goudai-server"
+# Logs en temps réel (VPS)
+ssh root@87.106.213.25
+docker compose -f /root/goudai-chat/docker-compose.yml logs -f goudai
 ```
 
----
-
-## Structure Google Sheets — Onglet `Users`
-
-| A: id | B: email | C: username | D: password_hash | E: google_id | F: avatar_url | G: drive_folder_id | H: api_keys_enc | I: preferences_enc | J: created_at | K: last_login |
-|-------|----------|-------------|------------------|--------------|---------------|-------------------|-----------------|-------------------|--------------|--------------|
-| uuid | email | nom | bcrypt hash | google sub | url photo | folder Drive ID | AES-256-GCM | AES-256-GCM | ISO date | ISO date |
-
-- `api_keys_enc` : JSON `{openai,anthropic,google,perplexity}` chiffré AES-256-GCM
-- `preferences_enc` : thème, modèle par défaut, etc. — chiffré aussi
-
----
-
-## Sécurité
-
-- **Mots de passe** : hashés bcrypt (cost 12)
-- **JWT** : httpOnly cookie, SameSite=Lax, Secure (HTTPS only), 30j expiry
-- **Clés API** : chiffrées AES-256-GCM côté serveur, jamais en clair dans Sheets
-- **Rate limiting** : 20 req/15min sur /auth, 120 req/min sur /api
-- **HTTPS** : Let's Encrypt, TLS 1.2/1.3 seulement
-- **Headers** : Helmet + CSP + HSTS
-
----
-
-## Commandes utiles
-
-```bash
-pm2 logs goudai-server       # Logs en temps réel
-pm2 restart goudai-server    # Redémarrer
-pm2 stop goudai-server       # Arrêter
-nginx -t && nginx -s reload # Recharger Nginx
-certbot renew --dry-run    # Tester le renouvellement SSL
-```
+Voir `.claude/skills/goudai-debug/SKILL.md` pour le guide de debugging complet.
