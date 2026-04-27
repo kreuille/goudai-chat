@@ -4290,3 +4290,78 @@ function updateCanvasReopenBtn() {
     }, 1500);
 })();
 
+// ─────────── Right panel (Kiro v3 - PR3) ───────────
+// Wiring du panneau lateral droit (3e colonne) avec onglets Général / Image.
+// Etat ouvert/ferme + onglet actif sauvegardes en localStorage 'goudai-right-panel'.
+(function() {
+    const panel = document.getElementById('right-panel');
+    const toggleBtn = document.getElementById('right-panel-toggle');
+    if (!panel || !toggleBtn) return;
+
+    const RP_STORAGE_KEY = 'goudai-right-panel';
+    const DEFAULT_TAB = 'general';
+
+    function rpLoadState() {
+        try {
+            const raw = localStorage.getItem(RP_STORAGE_KEY);
+            if (!raw) return { collapsed: false, tab: DEFAULT_TAB };
+            const s = JSON.parse(raw);
+            return { collapsed: !!s.collapsed, tab: s.tab || DEFAULT_TAB };
+        } catch { return { collapsed: false, tab: DEFAULT_TAB }; }
+    }
+    function rpSaveState(state) {
+        try { localStorage.setItem(RP_STORAGE_KEY, JSON.stringify(state)); } catch {}
+    }
+
+    function setRightPanelTab(name) {
+        const tabs = panel.querySelectorAll('.rp-tab');
+        let activeTab = null;
+        tabs.forEach(t => {
+            const isActive = t.dataset.rpTab === name;
+            t.classList.toggle('active', isActive);
+            if (isActive) activeTab = t;
+        });
+        panel.querySelectorAll('.rp-tab-content').forEach(c => {
+            c.classList.toggle('active', c.id === 'rp-tab-' + name);
+        });
+        // Anime l'indicateur sous l'onglet actif via variables CSS.
+        const tabsContainer = panel.querySelector('.rp-tabs');
+        if (tabsContainer && activeTab) {
+            tabsContainer.style.setProperty('--rp-tab-x', activeTab.offsetLeft + 'px');
+            tabsContainer.style.setProperty('--rp-tab-w', activeTab.offsetWidth + 'px');
+        }
+        const state = rpLoadState();
+        rpSaveState({ ...state, tab: name });
+    }
+
+    function toggleRightPanel(force) {
+        const willCollapse = (typeof force === 'boolean') ? force : !panel.classList.contains('collapsed');
+        panel.classList.toggle('collapsed', willCollapse);
+        toggleBtn.classList.toggle('collapsed', willCollapse);
+        toggleBtn.title = willCollapse ? 'Afficher le panneau de réglages' : 'Masquer le panneau de réglages';
+        const state = rpLoadState();
+        rpSaveState({ ...state, collapsed: willCollapse });
+    }
+
+    // Listeners
+    toggleBtn.addEventListener('click', () => toggleRightPanel());
+    panel.querySelectorAll('.rp-tab').forEach(tab => {
+        tab.addEventListener('click', () => setRightPanelTab(tab.dataset.rpTab));
+    });
+
+    // Restore au boot (state localStorage). Sur mobile (<= 768px), on FORCE le collapse
+    // pour ne pas envahir l'ecran a la 1ere visite.
+    const initial = rpLoadState();
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    const initialCollapsed = initial.collapsed || (isMobile && localStorage.getItem(RP_STORAGE_KEY) === null);
+    panel.classList.toggle('collapsed', initialCollapsed);
+    toggleBtn.classList.toggle('collapsed', initialCollapsed);
+    toggleBtn.title = initialCollapsed ? 'Afficher le panneau de réglages' : 'Masquer le panneau de réglages';
+    // Initialise l'onglet actif + l'indicateur en async (apres le render initial).
+    requestAnimationFrame(() => setRightPanelTab(initial.tab));
+
+    // Expose pour les futures PR4/PR5 (qui voudront switcher vers leurs onglets).
+    window.setRightPanelTab = setRightPanelTab;
+    window.toggleRightPanel = toggleRightPanel;
+})();
+
