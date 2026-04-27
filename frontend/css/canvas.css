@@ -435,18 +435,37 @@
   /* History panel: full width sur mobile */
   .canvas-panel.open .canvas-history-panel { width: 100% !important; }
 
-  /* Bouton retour discussion mobile : visible, large, pin a gauche */
+  /* Bouton retour discussion mobile : visible, large, pin a gauche
+     avec label texte "Discussion" + fleche. */
   .canvas-panel.open .canvas-btn-back-mobile {
     display: inline-flex !important;
     align-items: center;
     justify-content: center;
-    min-width: 38px !important;
-    min-height: 38px !important;
-    padding: 0 !important;
-    background: var(--accent-soft) !important;
-    color: var(--accent) !important;
-    border-color: var(--accent-glow) !important;
+    gap: 6px;
+    min-height: 40px !important;
+    padding: 6px 12px !important;
+    background: var(--accent) !important;
+    color: var(--btn-text) !important;
+    border-color: var(--accent) !important;
+    font-weight: 600;
+    font-size: 13px !important;
     flex-shrink: 0;
+  }
+  .canvas-panel.open .canvas-btn-back-mobile svg {
+    flex-shrink: 0;
+  }
+  /* Label texte 'Discussion' visible (par defaut le span est cache mobile) */
+  .canvas-panel.open .canvas-btn-back-mobile .back-label {
+    display: inline !important;
+    font-size: 13px !important;
+  }
+
+  /* Masquer la roue crenelée (right-panel-toggle) et le burger sidebar
+     quand le canvas est ouvert en mobile — ils sont a z-index < 1500
+     mais peuvent depasser via leur propre stacking context. */
+  body:has(.canvas-panel.open) .right-panel-toggle,
+  body:has(.canvas-panel.open) .sidebar-toggle {
+    display: none !important;
   }
 
   /* Compacter les autres boutons d'action — icone seule, sans texte */
