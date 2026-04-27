@@ -17,7 +17,7 @@
     <meta name="apple-mobile-web-app-title" content="GoudAI Chat">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
 
-    <link rel="stylesheet" href="css/style.css?v=19">
+    <link rel="stylesheet" href="css/style.css?v=20">
     <link rel="stylesheet" href="css/canvas.css?v=44">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <!-- Apply dark mode before paint -->
@@ -49,8 +49,9 @@
              laissant le body.sidebar-locked actif. -->
         <button id="sidebar-close-btn" type="button" style="display:none;position:absolute;top:12px;right:12px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--text);z-index:9999;padding:4px 8px;border-radius:6px;">×</button>
         <!-- R1 rebrand : monogramme G geometrique a la place du fromage -->
-        <!-- R1 rebrand : monogramme G geometrique a la place du fromage -->
-        <h1 class="sidebar-title"><span class="sidebar-logo"><svg class="goud-mark" width="22" height="22" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="3" width="26" height="26" rx="7" fill="currentColor"/><path d="M21 12h-5a4 4 0 0 0-4 4v0a4 4 0 0 0 4 4h2v-3h-2v-2h5v5a4 4 0 0 1-4 4h-1a7 7 0 0 1-7-7v0a7 7 0 0 1 7-7h5z" fill="var(--bg-sidebar)"/></svg> goudai <span class="version-badge">2.0</span></span></h1>
+        <!-- R7: GoudMark identique au design — transform "translate(0,0) scale(0.78) translate(4.5,4.5)"
+             reproduit fidelement (ordre SVG = right-to-left donc translate(4.5,4.5) applique en premier). -->
+        <h1 class="sidebar-title"><span class="sidebar-logo"><svg class="goud-mark" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="3" width="26" height="26" rx="7" fill="currentColor"/><path transform="translate(0,0) scale(0.78) translate(4.5,4.5)" d="M22 11h-6a5 5 0 0 0-5 5v0a5 5 0 0 0 5 5h2v-4h-2v-2h6v6a5 5 0 0 1-5 5h-1a9 9 0 0 1-9-9v0a9 9 0 0 1 9-9h6z" fill="#ffffff"/></svg> goudai <span class="version-badge">2.0</span></span></h1>
         <a href="https://www.linkedin.com/in/arnaudguedou/" target="_blank" rel="noopener noreferrer" class="sidebar-credit">by Arnaud Guedou</a>
         <button id="new-chat-btn" class="new-chat-btn" data-i18n-fr="+ Nouvelle conversation" data-i18n-en="+ New conversation">+ Nouvelle conversation</button>
 
@@ -646,7 +647,7 @@
     <script src="js/auth.js"></script>
     <script src="js/api.js?v=6"></script>
     <script src="js/filemanager.js"></script>
-    <script src="js/app.js?v=98"></script>
+    <script src="js/app.js?v=99"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
