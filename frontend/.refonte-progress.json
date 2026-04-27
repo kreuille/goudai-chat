@@ -1,16 +1,16 @@
 {
   "version": "1.0",
-  "derniere_maj": "2026-04-27T09:15:00Z",
+  "derniere_maj": "2026-04-27T09:30:00Z",
   "phases": {
     "phase1": {
       "label": "Corrections immédiates",
-      "status": "in_progress",
+      "status": "done",
       "taches": {
         "1_1_duplicate_btn": "done",
         "1_2_version_badge": "done",
         "1_3_logo_coherent": "done",
         "1_4_inline_styles_auth": "done",
-        "1_5_css_index_html": "todo"
+        "1_5_css_index_html": "done"
       }
     },
     "phase2": {
@@ -60,6 +60,7 @@
     "Phase 1.1 : 4 boutons dupliqués sidebar-close-btn (lignes 38-41 d'app.html) réduits à 1 seul. Comportement HTML inchangé (les 4 portaient le même id donc seul le 1er était jamais sélectionné par getElementById).",
     "Phase 1.2 : version badge 2.2 -> 2.0, alignée avec server/package.json et /health endpoint (tous bumpés à 2.0.0). Cohérent avec post-intégration Kiro v3 (10 PRs).",
     "Phase 1.3 : logo 🦊 (fox) de la page de connexion remplacé par 🧀 (cheese), aligné avec app.html. Le 🦊 dans EMOJI_LIBRARY['Animaux'] (app.js:1057) reste — c'est une donnée de l'emoji picker, pas un logo.",
-    "Phase 1.4 : mountUserWidget() refactor BEM. ~15 inline style= + 2 onmouseover/onmouseout supprimés au profit des classes .user-widget, .user-widget__avatar (+ --initial), .user-widget__info, .user-widget__name, .user-widget__email, .user-widget__logout dans style.css."
+    "Phase 1.4 : mountUserWidget() refactor BEM. ~15 inline style= + 2 onmouseover/onmouseout supprimés au profit des classes .user-widget, .user-widget__avatar (+ --initial), .user-widget__info, .user-widget__name, .user-widget__email, .user-widget__logout dans style.css.",
+    "Phase 1.5 : ~243 lignes du <style> inline d'index.html migrées vers style.css sous le bloc 'Page de connexion'. Tous les sélecteurs préfixés .login-page (body.login-page) pour éviter les collisions avec app.html qui partage le même stylesheet. Variables CSS ré-déclarées en scope .login-page (override les valeurs globales pour cette seule page). Animation spin renommée loginSpin pour ne pas écraser celle existante de l'app. index.html ne contient plus que <link rel='stylesheet' href='css/style.css?v=10'> + <style>html,body{height:100%}</style> minimal."
   ]
 }

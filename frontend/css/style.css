@@ -1607,6 +1607,246 @@ html, body {
     background: var(--accent-soft, rgba(196, 136, 30, 0.1));
 }
 
+/* ────────────────── Page de connexion (index.html) — Refonte P1.5 ────────────────── */
+/* Tout le CSS deplace depuis le bloc <style> inline d'index.html (~243 lignes).
+   Tous les selecteurs sont prefixes .login-page pour eviter les collisions
+   avec app.html qui partage ce stylesheet. Les variables CSS sont
+   re-declarees en scope .login-page (override pour cette seule page). */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap');
+
+body.login-page {
+    --bg:           #080709;
+    --surface:      #0f0e13;
+    --surface-2:    #141218;
+    --border:       #201d28;
+    --border-input: #2c2836;
+    --text:         #ece7e0;
+    --text-sec:     #7c7180;
+    --text-muted:   #3e3848;
+    --accent:       #c4881e;
+    --accent-b:     #dfa040;
+    --accent-soft:  rgba(196,136,30,.12);
+    --accent-glow:  rgba(196,136,30,.22);
+    --error:        #f87171;
+    --error-bg:     rgba(248,113,113,.1);
+
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+}
+body.login-page *, body.login-page *::before, body.login-page *::after {
+    margin: 0; padding: 0; box-sizing: border-box;
+}
+body.login-page::before {
+    content: '';
+    position: fixed;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(196,136,30,.06) 0%, transparent 70%);
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+body.login-page::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+    pointer-events: none;
+    opacity: .4;
+    z-index: 0;
+}
+
+.login-page .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 420px;
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 32px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.03);
+}
+.login-page .card::before {
+    content: '';
+    position: absolute; top: 0; left: 20%; right: 20%; height: 1.5px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    border-radius: 99px;
+    opacity: .7;
+}
+.login-page .logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.4rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    color: var(--text);
+    text-align: center;
+    margin-bottom: 4px;
+    line-height: 1;
+}
+.login-page .logo span { color: var(--accent); }
+.login-page .tagline {
+    text-align: center;
+    font-size: .75rem;
+    color: var(--text-muted);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 32px;
+}
+.login-page .tabs {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+.login-page .tab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    padding: 9px;
+    font-family: 'Outfit', sans-serif;
+    font-size: .8rem;
+    font-weight: 500;
+    letter-spacing: .04em;
+    cursor: pointer;
+    color: var(--text-sec);
+    transition: background .15s, color .15s;
+}
+.login-page .tab-btn.active {
+    background: var(--accent-soft);
+    color: var(--accent-b);
+}
+.login-page .form { display: flex; flex-direction: column; gap: 14px; }
+.login-page .form.hidden { display: none; }
+.login-page label {
+    font-size: .68rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    display: block;
+    margin-bottom: 5px;
+}
+.login-page input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border-input);
+    border-radius: 10px;
+    padding: 10px 13px;
+    font-family: 'Outfit', sans-serif;
+    font-size: .9rem;
+    color: var(--text);
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+}
+.login-page input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.login-page input::placeholder { color: var(--text-muted); }
+.login-page .submit-btn {
+    background: var(--accent);
+    color: #08070a;
+    border: none;
+    border-radius: 11px;
+    padding: 11px;
+    font-family: 'Outfit', sans-serif;
+    font-size: .88rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s, box-shadow .15s;
+    margin-top: 4px;
+}
+.login-page .submit-btn:hover:not(:disabled) {
+    opacity: .88;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px var(--accent-glow);
+}
+.login-page .submit-btn:disabled { opacity: .35; cursor: not-allowed; }
+.login-page .divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 4px 0;
+    font-size: .72rem;
+    color: var(--text-muted);
+    letter-spacing: .06em;
+}
+.login-page .divider::before, .login-page .divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+}
+.login-page .google-btn {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    padding: 10px 14px;
+    font-family: 'Outfit', sans-serif;
+    font-size: .86rem;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-decoration: none;
+}
+.login-page .google-btn:hover { background: #1c1a22; border-color: #3a364a; }
+.login-page .google-btn svg { flex-shrink: 0; }
+.login-page .alert {
+    padding: 10px 13px;
+    border-radius: 9px;
+    font-size: .82rem;
+    display: none;
+}
+.login-page .alert.error {
+    background: var(--error-bg);
+    color: var(--error);
+    border: 1px solid rgba(248,113,113,.2);
+    display: block;
+}
+.login-page .alert.success {
+    background: rgba(74,222,128,.1);
+    color: #4ade80;
+    border: 1px solid rgba(74,222,128,.2);
+    display: block;
+}
+.login-page .spin {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(8,7,10,.3);
+    border-top-color: #08070a;
+    border-radius: 50%;
+    animation: loginSpin .7s linear infinite;
+    vertical-align: middle;
+}
+@keyframes loginSpin { to { transform: rotate(360deg); } }
+.login-page .url-error {
+    background: var(--error-bg);
+    color: var(--error);
+    border: 1px solid rgba(248,113,113,.2);
+    border-radius: 9px;
+    padding: 10px 13px;
+    font-size: .82rem;
+    margin-bottom: 16px;
+    display: none;
+}
+@media (max-width: 480px) {
+    .login-page .card { padding: 28px 20px; border-radius: 16px; }
+    .login-page .logo { font-size: 2rem; }
+}
+
 /* Bouton toggle du right panel - fixed top-right (symetrique du #sidebar-toggle a gauche) */
 .right-panel-toggle {
     position: fixed;
