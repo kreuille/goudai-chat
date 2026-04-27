@@ -1,4 +1,49 @@
 
+// === R3 i18n bilingue (FR / EN / Bilingue) =============================
+// Source de verite: localStorage.goudai-language ('fr' | 'en' | 'bilingual').
+// Convention: les noeuds traduisibles portent data-i18n-fr et data-i18n-en
+// pour le textContent, et data-i18n-fr-placeholder / data-i18n-en-placeholder
+// pour les inputs/textarea. applyI18n() rebalaye le DOM a chaque changement.
+const I18N_KEY = 'goudai-language';
+function getCurrentLang() {
+    try { return localStorage.getItem(I18N_KEY) || 'fr'; } catch { return 'fr'; }
+}
+function t(fr, en) {
+    const lang = getCurrentLang();
+    if (lang === 'en') return en;
+    if (lang === 'bilingual') return fr + ' · ' + en;
+    return fr;
+}
+function applyI18n() {
+    const lang = getCurrentLang();
+    document.querySelectorAll('[data-i18n-fr]').forEach(el => {
+        const fr = el.getAttribute('data-i18n-fr') || '';
+        const en = el.getAttribute('data-i18n-en') || fr;
+        el.textContent = lang === 'en' ? en : (lang === 'bilingual' ? fr + ' · ' + en : fr);
+    });
+    document.querySelectorAll('[data-i18n-fr-placeholder]').forEach(el => {
+        const fr = el.getAttribute('data-i18n-fr-placeholder') || '';
+        const en = el.getAttribute('data-i18n-en-placeholder') || fr;
+        el.placeholder = lang === 'en' ? en : (lang === 'bilingual' ? fr + ' · ' + en : fr);
+    });
+    // Coche le bon radio si la modale Apparence est ouverte
+    const radio = document.querySelector('input[name="lang-choice"][value="' + lang + '"]');
+    if (radio) radio.checked = true;
+    document.documentElement.setAttribute('lang', lang === 'en' ? 'en' : 'fr');
+}
+function setLanguage(lang) {
+    if (lang !== 'fr' && lang !== 'en' && lang !== 'bilingual') lang = 'fr';
+    try { localStorage.setItem(I18N_KEY, lang); } catch {}
+    applyI18n();
+}
+// Wire les radios + apply au DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+    applyI18n();
+    document.addEventListener('change', (e) => {
+        if (e.target && e.target.name === 'lang-choice') setLanguage(e.target.value);
+    });
+});
+
 function fetchLocalModels() {
     // Modèles locaux non supportés dans GoudAI
     return Promise.resolve([]);
