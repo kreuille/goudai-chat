@@ -1,13 +1,13 @@
 {
   "version": "1.0",
-  "derniere_maj": "2026-04-27T08:50:00Z",
+  "derniere_maj": "2026-04-27T09:00:00Z",
   "phases": {
     "phase1": {
       "label": "Corrections immédiates",
       "status": "in_progress",
       "taches": {
         "1_1_duplicate_btn": "done",
-        "1_2_version_badge": "todo",
+        "1_2_version_badge": "done",
         "1_3_logo_coherent": "todo",
         "1_4_inline_styles_auth": "todo",
         "1_5_css_index_html": "todo"
@@ -57,6 +57,7 @@
     "Phase 3 entièrement déjà couverte par PR Budget (#2) + onglet Budget de la modale Config v2 (PR7 mergée).",
     "Phase 5.2 : 4 doublons sidebar-close-btn @media nettoyés via PR9 (toolbar inline).",
     "Phase 5.3 : api.js?v=1 a été bumpé à v=5 lors des PRs Kiro v3.",
-    "Phase 1.1 : 4 boutons dupliqués sidebar-close-btn (lignes 38-41 d'app.html) réduits à 1 seul. Comportement HTML inchangé (les 4 portaient le même id donc seul le 1er était jamais sélectionné par getElementById)."
+    "Phase 1.1 : 4 boutons dupliqués sidebar-close-btn (lignes 38-41 d'app.html) réduits à 1 seul. Comportement HTML inchangé (les 4 portaient le même id donc seul le 1er était jamais sélectionné par getElementById).",
+    "Phase 1.2 : version badge 2.2 -> 2.0, alignée avec server/package.json et /health endpoint (tous bumpés à 2.0.0). Cohérent avec post-intégration Kiro v3 (10 PRs)."
   ]
 }
