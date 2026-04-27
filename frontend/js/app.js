@@ -1060,27 +1060,24 @@ enhancePromptBtn.addEventListener('click', async () => {
 function updatePromptToolbar() {
     if (!composerToolbar) return;
     const hasText = promptInput.value.trim() !== '';
-    const showInsert  = !hasText && originalPromptBeforeEnhance === null;
-    const showEnhance = hasText && originalPromptBeforeEnhance === null;
-    const showRevert  = originalPromptBeforeEnhance !== null;
-    const showSave    = hasText || showRevert;
+    const isRevert = originalPromptBeforeEnhance !== null;
 
-    toolbarInsertBtn.style.display  = showInsert  ? 'inline-flex' : 'none';
-    toolbarSaveBtn.style.display    = showSave    ? 'inline-flex' : 'none';
+    // Insert et Enhance toujours visibles (Enhance disabled si pas de texte).
+    // Save visible des qu'il y a du texte.
+    toolbarInsertBtn.style.display = isRevert ? 'none' : 'inline-flex';
+    toolbarSaveBtn.style.display   = (hasText || isRevert) ? 'inline-flex' : 'none';
 
-    if (showRevert) {
-        toolbarEnhanceBtn.style.display = 'inline-flex';
+    toolbarEnhanceBtn.style.display = 'inline-flex';
+    if (isRevert) {
         toolbarEnhanceBtn.classList.add('revert');
         toolbarEnhanceBtn.title = 'Revenir au prompt original';
         toolbarEnhanceBtn.querySelector('.btn-label').textContent = 'Revenir au prompt original';
-    } else if (showEnhance) {
-        toolbarEnhanceBtn.style.display = 'inline-flex';
-        toolbarEnhanceBtn.classList.remove('revert');
-        toolbarEnhanceBtn.title = isEnhancing ? 'Amélioration en cours…' : 'Améliorer le prompt';
-        toolbarEnhanceBtn.querySelector('.btn-label').textContent = isEnhancing ? 'Amélioration…' : 'Améliorer le prompt';
-        toolbarEnhanceBtn.disabled = isEnhancing;
+        toolbarEnhanceBtn.disabled = false;
     } else {
-        toolbarEnhanceBtn.style.display = 'none';
+        toolbarEnhanceBtn.classList.remove('revert');
+        toolbarEnhanceBtn.title = isEnhancing ? 'Amélioration en cours…' : (hasText ? 'Améliorer le prompt' : 'Tapez du texte pour activer');
+        toolbarEnhanceBtn.querySelector('.btn-label').textContent = isEnhancing ? 'Amélioration…' : 'Améliorer le prompt';
+        toolbarEnhanceBtn.disabled = isEnhancing || !hasText;
     }
 }
 
