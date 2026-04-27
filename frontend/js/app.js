@@ -1839,7 +1839,19 @@ async function maybeGenerateTitle() {
 
     try {
         const prompt = `Donne un titre très court (3 à 6 mots max, en français) pour cette conversation. Réponds UNIQUEMENT avec le titre, sans guillemets ni ponctuation finale.\n\nUtilisateur : ${userMsg.substring(0, 300)}\n\nAssistant : ${assistantMsg.substring(0, 300)}`;
-        const title = (await streamText(modelId, prompt))?.trim();
+        // streamText() n'existe pas en GoudAI -> on wrap streamModel() en Promise
+        // (meme pattern que enhancePrompt corrige en PR9).
+        const title = (await new Promise((resolve, reject) => {
+            let full = '';
+            streamModel(
+                modelId,
+                [{ role: 'user', content: prompt }],
+                (chunk) => { full += chunk; },
+                () => resolve(full),
+                (err) => reject(err),
+                null, false, null, null
+            );
+        }))?.trim();
         if (title) {
             conversationTitle = title;
             saveConversation();
