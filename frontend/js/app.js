@@ -3772,6 +3772,9 @@ function openApiKeysModal() {
     const _mEl = document.getElementById('apikey-mistral'); if (_mEl) _mEl.value = API_KEYS.mistral || '';
     const _gEl = document.getElementById('apikey-grok'); if (_gEl) _gEl.value = API_KEYS.grok || '';
     const _dEl = document.getElementById('apikey-deepseek'); if (_dEl) _dEl.value = API_KEYS.deepseek || '';
+    // PR7 Kiro v3 : nouveaux providers Z.ai (GLM-5/5.1) et OpenRouter (Flux 2)
+    const _zEl = document.getElementById('apikey-zai'); if (_zEl) _zEl.value = API_KEYS.zai || '';
+    const _orEl = document.getElementById('apikey-openrouter'); if (_orEl) _orEl.value = API_KEYS.openrouter || '';
     const _lEl = document.getElementById('apikey-local'); if (_lEl) _lEl.value = API_KEYS.local || '';
     (document.getElementById('apikey-local-status')||{style:{},textContent:'',className:'',checked:false,value:''}).textContent = '';
     (document.getElementById('apikey-local-status')||{style:{},textContent:'',className:'',checked:false,value:''}).className = 'apikey-local-status';
@@ -3800,44 +3803,30 @@ function closeApiKeysModal() {
 }
 
 function saveApiKeysFromModal() {
+    // PR7 (Kiro v3) : modale refondue en 7 onglets. Le panel Cles API gere
+    // les 9 providers (les 7 historiques + Z.ai et OpenRouter ajoutes en PR1).
+    const _val = (id) => document.getElementById(id)?.value.trim() || '';
     const keys = {
-        openai: document.getElementById('apikey-openai').value.trim(),
-        anthropic: document.getElementById('apikey-anthropic').value.trim(),
-        google: document.getElementById('apikey-google').value.trim(),
-        perplexity: document.getElementById('apikey-perplexity').value.trim(),
-        mistral: document.getElementById('apikey-mistral')?.value.trim() || '',
-        grok: document.getElementById('apikey-grok')?.value.trim() || '',
-        deepseek: document.getElementById('apikey-deepseek')?.value.trim() || '',
-        local: document.getElementById('apikey-local')?.value.trim() || ''
+        openai:     _val('apikey-openai'),
+        anthropic:  _val('apikey-anthropic'),
+        google:     _val('apikey-google'),
+        perplexity: _val('apikey-perplexity'),
+        mistral:    _val('apikey-mistral'),
+        grok:       _val('apikey-grok'),
+        deepseek:   _val('apikey-deepseek'),
+        zai:        _val('apikey-zai'),
+        openrouter: _val('apikey-openrouter'),
+        local:      _val('apikey-local')
     };
-    const tts = document.getElementById('audio-tts-provider').value;
-    const stt = document.getElementById('audio-stt-provider').value;
-    const enhance = document.getElementById('enhance-provider').value;
-    const summary = document.getElementById('summary-model').value;
-    const roleOptimize = document.getElementById('role-optimize-model').value;
-
-    // Validation : vérifier que les clés nécessaires sont renseignées
-    const errEl = document.getElementById('models-error');
-    const getEditeurForModel = (val) => {
-        if (val === '__local__') return 'local';
-        const m = MODELS_DATA.text.find(m => m.id === val);
-        return m?.editeur || 'openai';
-    };
-    const checks = [
-        { label: 'Synthèse vocale', editeur: tts },
-        { label: 'Transcription', editeur: stt },
-        { label: 'Amélioration de prompts', editeur: getEditeurForModel(enhance) },
-        { label: 'Résumé IA', editeur: getEditeurForModel(summary) },
-        { label: 'Optimisation de rôle', editeur: getEditeurForModel(roleOptimize) },
-    ];
-    // Validation désactivée - on sauvegarde sans bloquer
-    if (typeof errEl !== 'undefined' && errEl && errEl.style) errEl.style.display = 'none';
-
     saveApiKeys(keys);
-    saveAudioSettings({ ttsProvider: tts, sttProvider: stt, enhanceModel: enhance, summaryModel: summary, roleOptimizeModel: roleOptimize });
-    // Sauvegarder le budget
+
+    // Audio settings (onglet Audio v2 : seulement TTS + STT providers retenus,
+    // les selects enhance/summary/roleOptimize ont ete retires de la modale).
+    const tts = _val('audio-tts-provider') || 'openai';
+    const stt = _val('audio-stt-provider') || 'openai';
+    saveAudioSettings({ ttsProvider: tts, sttProvider: stt });
+
     saveBudgetSettings();
-    // Rafraîchir les modèles locaux puis le dropdown
     fetchLocalModels().then(() => populateModelSelect());
     closeApiKeysModal();
 }
@@ -4584,6 +4573,65 @@ window.updateImageParamsVisibility = updateImageParamsVisibility;
     // Expose pour les futures PR4/PR5 (qui voudront switcher vers leurs onglets).
     window.setRightPanelTab = setRightPanelTab;
     window.toggleRightPanel = toggleRightPanel;
+})();
+
+// ─────────── Modale Configuration v2 - 7 onglets (Kiro v3 - PR7) ───────────
+(function() {
+    const tabs   = document.querySelectorAll('#apikeys-modal-overlay .config-tab');
+    const panels = document.querySelectorAll('#apikeys-modal-overlay .config-tab-panel');
+    if (!tabs.length || !panels.length) return;
+
+    function setActiveTab(name) {
+        tabs.forEach(t   => t.classList.toggle('active', t.dataset.configTab === name));
+        panels.forEach(p => p.classList.toggle('active', p.dataset.configPanel === name));
+    }
+    tabs.forEach(t => t.addEventListener('click', () => setActiveTab(t.dataset.configTab)));
+    window.setConfigTab = setActiveTab;
+
+    // Onglet Stats : ouvre la modale dashboard existante
+    const openDash = document.getElementById('config-open-dashboard');
+    if (openDash) openDash.addEventListener('click', () => {
+        document.getElementById('apikeys-modal-overlay').style.display = 'none';
+        const dash = document.getElementById('dashboard-modal-overlay');
+        if (dash) dash.style.display = 'flex';
+    });
+
+    // Onglet FAQ : ouvre la modale FAQ autonome (PR8)
+    const openFaq = document.getElementById('config-open-faq');
+    if (openFaq) openFaq.addEventListener('click', () => {
+        document.getElementById('apikeys-modal-overlay').style.display = 'none';
+        document.getElementById('faq-btn')?.click();
+    });
+
+    // Onglet Apparence : theme radios <-> localStorage 'goudai-theme'
+    const themeRadios = document.querySelectorAll('input[name="theme-choice"]');
+    function applyTheme(value) {
+        try { localStorage.setItem('goudai-theme', value); } catch {}
+        if (value === 'auto') {
+            document.documentElement.classList.toggle('dark-init', window.matchMedia('(prefers-color-scheme: dark)').matches);
+        } else {
+            document.documentElement.classList.toggle('dark-init', value === 'dark');
+        }
+    }
+    themeRadios.forEach(r => r.addEventListener('change', () => { if (r.checked) applyTheme(r.value); }));
+    // Init au boot : coche le radio correspondant a la valeur localStorage
+    const initTheme = (function() {
+        try { return localStorage.getItem('goudai-theme') || 'dark'; } catch { return 'dark'; }
+    })();
+    themeRadios.forEach(r => { if (r.value === initTheme) r.checked = true; });
+
+    // Onglet Partager : URL de l'instance + bouton copier
+    const shareInput = document.getElementById('share-url-input');
+    const shareCopy  = document.getElementById('share-url-copy');
+    if (shareInput) shareInput.value = window.location.origin + '/';
+    if (shareCopy) shareCopy.addEventListener('click', () => {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(shareInput.value);
+            const orig = shareCopy.textContent;
+            shareCopy.textContent = '✓';
+            setTimeout(() => { shareCopy.textContent = orig; }, 1200);
+        }
+    });
 })();
 
 // ─────────── FAQ (Kiro v3 - PR8) ───────────
