@@ -54,13 +54,46 @@ Voir `.claude/skills/goudai-git/SKILL.md` pour les conventions de commit.
 
 ```bash
 # Sur le VPS (ou via SSH)
-ssh root@87.106.213.25
+ssh goudai-vps
 cd /root/goudai-chat
 ./deploy.sh          # git pull main + docker rebuild + restart
 ```
 
 Le script vérifie la présence du `.env` et du `service-account.json` avant de déployer.
 Voir `.claude/skills/goudai-deploy/SKILL.md` pour la procédure complète.
+
+---
+
+## 🧪 Environnement dev isolé — `dev.goudai.guedou.com`
+
+Le VPS héberge **deux environnements en parallèle** sur le même hôte, totalement isolés :
+
+| Domaine | Dossier | Container | Port hôte | Branche | Fichier env |
+|---|---|---|---|---|---|
+| `goudai.guedou.com` | `/root/goudai-chat/` | `goudai-app` | `3001` | `main` | `.env` (prod) |
+| `dev.goudai.guedou.com` | `/root/goudai-chat-dev/` | `goudai-app-dev` | `3002` | `dev` | `.env` (dev) |
+
+Les deux clones partagent :
+- Le **même `Dockerfile` et `docker-compose.yml`** (paramétrés via `${CONTAINER_NAME}` / `${HOST_PORT}` substitués depuis chaque `.env`)
+- Le **même OAuth client Google** (2 redirect URIs autorisées : prod + dev)
+- Les **mêmes `JWT_SECRET` et `ENCRYPTION_KEY`** (cookies cross-env, pratique en debug)
+
+Et sont isolés sur :
+- Une **`.env` propre** à chaque dossier (template : [.env.dev.example](.env.dev.example))
+- **Google Sheets séparées** (users dev ≠ users prod)
+- Des **volumes `data/conversations/` séparés** (un dossier physique par clone)
+
+### Workflow déploiement
+
+```bash
+# Déployer la prod (depuis main)
+ssh goudai-vps "cd /root/goudai-chat && ./deploy.sh"
+
+# Déployer la dev (depuis dev) — n'impacte pas la prod
+ssh goudai-vps "cd /root/goudai-chat-dev && ./deploy.sh"
+```
+
+Chaque `deploy.sh` opère **exclusivement sur son propre dossier** : il déduit la branche cible du dossier où il vit. Aucun risque de toucher l'autre environnement.
 
 ---
 

@@ -4,9 +4,12 @@
 GoudAI Chat est une application web de chat multi-IA développée par Arnaud Guedou.
 Elle permet d'interagir avec 7 providers IA (OpenAI, Anthropic, Google, Mistral, xAI, DeepSeek, Perplexity) depuis une interface unique, sans abonnement SaaS.
 
-- **URL production** : https://goudai.guedou.com
-- **VPS** : 87.106.213.25 (Ubuntu 24.04, Docker) — dossier `/root/goudai-chat/`
+- **URL production** : https://goudai.guedou.com (branche `main`, container `goudai-app` sur :3001, dossier `/root/goudai-chat/`)
+- **URL dev isolée** : https://dev.goudai.guedou.com (branche `dev`, container `goudai-app-dev` sur :3002, dossier `/root/goudai-chat-dev/`)
+- **VPS** : 87.106.213.25 (Ubuntu 24.04, Docker) — alias SSH `goudai-vps`
 - **Repo GitHub** : branche `main` = prod, `dev` = intégration
+
+> Les deux environnements partagent le même `Dockerfile`, `docker-compose.yml`, OAuth client et clés JWT/encryption — ils sont isolés sur leur `.env`, leur Google Sheet et leurs volumes `data/`. Voir [.env.dev.example](../.env.dev.example) et `README.md` section « Environnement dev isolé ».
 
 ## Stack technique
 - **Backend** : Node.js / Express.js (`/server/`)
