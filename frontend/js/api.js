@@ -899,26 +899,46 @@ async function ttsSpeak(text, onDone, onError) {
     } catch (err) { onError(err); }
 }
 
-// ===================== OpenAI Whisper (whisper-1) — $0.006/minute =====================
+// ===================== STT — multi-provider (Whisper / Voxtral) =====================
+// Provider choisi via AUDIO_SETTINGS.sttProvider (défaut: 'openai').
+// Modèles déclarés dans MODELS_DATA.stt (frontend/models.js).
 
 async function transcribeAudio(audioBlob, onDone, onError) {
+    const provider = (typeof AUDIO_SETTINGS !== 'undefined' && AUDIO_SETTINGS.sttProvider) || 'openai';
+
+    if (!API_KEYS[provider]) {
+        return onError(new Error(`Clé API ${provider} manquante — configurez-la dans les réglages.`));
+    }
+
+    const sttModel = MODELS_DATA.stt.find(m => m.editeur === provider);
+    if (!sttModel) {
+        return onError(new Error(`Aucun modèle STT déclaré pour ${provider} dans models.js.`));
+    }
+
+    const ENDPOINTS = {
+        openai:  'https://api.openai.com/v1/audio/transcriptions',
+        mistral: 'https://api.mistral.ai/v1/audio/transcriptions'
+    };
+    const endpoint = ENDPOINTS[provider];
+    if (!endpoint) {
+        return onError(new Error(`Provider STT non supporté : ${provider}.`));
+    }
+
     try {
         const formData = new FormData();
         formData.append('file', audioBlob, 'audio.webm');
-        formData.append('model', 'whisper-1');
+        formData.append('model', sttModel.id);
         formData.append('language', 'fr');
 
-        const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        const response = await fetch(endpoint, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${API_KEYS.openai}`
-            },
+            headers: { 'Authorization': `Bearer ${API_KEYS[provider]}` },
             body: formData
         });
 
         if (!response.ok) {
-            const err = await response.text();
-            throw new Error(`Whisper API error ${response.status}: ${err}`);
+            const errBody = await response.text();
+            throw new Error(`STT ${provider} error ${response.status}: ${errBody}`);
         }
 
         const data = await response.json();

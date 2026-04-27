@@ -47,7 +47,9 @@ function fetchLocalModels() {
 })();
 
 
-// Audio settings
+// --- Audio settings (TTS / STT / modèles auxiliaires) ---
+// Source de vérité : preferences_enc serveur (clé `audioSettings`).
+// localStorage = cache local pour latence et fallback hors-ligne.
 const AUDIO_SETTINGS = {
     ttsProvider: 'openai',
     sttProvider: 'openai',
@@ -55,14 +57,53 @@ const AUDIO_SETTINGS = {
     summaryModel: 'gpt-4.1-2025-04-14',
     roleOptimizeModel: 'claude-sonnet-4-5'
 };
-function saveAudioSettings(settings) {
+
+async function loadAudioSettingsFromServer() {
+    try {
+        const res = await fetch(`${KIRO_API}/api/user/preferences`, { credentials: 'include' });
+        if (res.ok) {
+            const data = await res.json();
+            const audio = data?.preferences?.audioSettings;
+            if (audio && typeof audio === 'object') {
+                Object.assign(AUDIO_SETTINGS, audio);
+                localStorage.setItem('goudai-audio-settings', JSON.stringify(AUDIO_SETTINGS));
+                return;
+            }
+        }
+    } catch (err) {
+        console.warn('[audio-settings] sync from server failed:', err.message);
+    }
+    // Fallback : cache localStorage
+    try {
+        const cached = JSON.parse(localStorage.getItem('goudai-audio-settings') || '{}');
+        Object.assign(AUDIO_SETTINGS, cached);
+    } catch {}
+}
+
+async function saveAudioSettings(settings) {
     if (settings.ttsProvider) AUDIO_SETTINGS.ttsProvider = settings.ttsProvider;
     if (settings.sttProvider) AUDIO_SETTINGS.sttProvider = settings.sttProvider;
     if (settings.enhanceModel) AUDIO_SETTINGS.enhanceModel = settings.enhanceModel;
     if (settings.summaryModel) AUDIO_SETTINGS.summaryModel = settings.summaryModel;
     if (settings.roleOptimizeModel) AUDIO_SETTINGS.roleOptimizeModel = settings.roleOptimizeModel;
     localStorage.setItem('goudai-audio-settings', JSON.stringify(AUDIO_SETTINGS));
+    // Sync serveur (non-bloquant : on ignore l'échec, le cache local prend le relais)
+    try {
+        const getRes = await fetch(`${KIRO_API}/api/user/preferences`, { credentials: 'include' });
+        const current = getRes.ok ? ((await getRes.json()).preferences || {}) : {};
+        await fetch(`${KIRO_API}/api/user/preferences`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ ...current, audioSettings: { ...AUDIO_SETTINGS } })
+        });
+    } catch (err) {
+        console.warn('[audio-settings] sync to server failed:', err.message);
+    }
 }
+
+// Au démarrage : charger les réglages depuis le serveur (auth requise → silencieux si 401).
+loadAudioSettingsFromServer();
 
 function saveBudgetSettings() {
     // Budget non implementé dans GoudAI - stub
@@ -3227,6 +3268,14 @@ micBtn.addEventListener('click', async () => {
         return;
     }
 
+    // Garde-fou : refuser de capturer l'audio si la clé API du provider STT est absente.
+    // Évite de gaspiller un enregistrement qui finirait en 401.
+    const sttProvider = AUDIO_SETTINGS.sttProvider || 'openai';
+    if (!API_KEYS[sttProvider]) {
+        alert(`Clé API ${sttProvider} manquante — configurez-la dans les réglages avant d'utiliser le micro.`);
+        return;
+    }
+
     try {
         if (!micStream || !micStream.active) {
             micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -3249,9 +3298,16 @@ micBtn.addEventListener('click', async () => {
                 micBtn.innerHTML = micIconDefault;
                 promptInput.value += (promptInput.value && !promptInput.value.endsWith(' ') ? ' ' : '') + text;
                 promptInput.dispatchEvent(new Event('input'));
-                // Coût STT simplifié
-                const sttCost = durationMin * 0.006; // Whisper $0.006/min
+
+                // Coût STT dynamique : lookup dans MODELS_DATA.stt selon le provider configuré.
+                // Format prix attendu : "$0.006/min" → on extrait le float.
+                const sttModel = MODELS_DATA.stt.find(m => m.editeur === sttProvider);
+                const pricePerMin = sttModel?.prix?.includes('/min')
+                    ? parseFloat(sttModel.prix.replace(/[^0-9.]/g, ''))
+                    : 0;
+                const sttCost = durationMin * (Number.isFinite(pricePerMin) ? pricePerMin : 0);
                 totalAudioCost += sttCost;
+                addCostForModel('stt', 0, 0, sttCost);
                 updateTokenDisplay();
                 if (conversationId) saveConversation();
             }, (err) => {

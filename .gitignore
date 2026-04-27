@@ -49,6 +49,12 @@ coverage/
 # ── Docker ───────────────────────────────────────────────────────
 docker-compose.override.yml
 
+# ── Assets de dev / réintégration Kiro v2.3 ─────────────────────
+# Code de référence Kiro lu localement pour porter ses features.
+# Ne doit pas être embarqué dans l'image Docker ni pousser en prod.
+frontend/kiro_v23_reference/
+prompt-reintegration-kiro-features.md
+
 # ── Documentation (hors repo) ────────────────────────────────────
 *.docx
 *.doc
