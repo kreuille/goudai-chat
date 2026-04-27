@@ -1,4 +1,49 @@
 
+// === R3 i18n bilingue (FR / EN / Bilingue) =============================
+// Source de verite: localStorage.goudai-language ('fr' | 'en' | 'bilingual').
+// Convention: les noeuds traduisibles portent data-i18n-fr et data-i18n-en
+// pour le textContent, et data-i18n-fr-placeholder / data-i18n-en-placeholder
+// pour les inputs/textarea. applyI18n() rebalaye le DOM a chaque changement.
+const I18N_KEY = 'goudai-language';
+function getCurrentLang() {
+    try { return localStorage.getItem(I18N_KEY) || 'fr'; } catch { return 'fr'; }
+}
+function t(fr, en) {
+    const lang = getCurrentLang();
+    if (lang === 'en') return en;
+    if (lang === 'bilingual') return fr + ' · ' + en;
+    return fr;
+}
+function applyI18n() {
+    const lang = getCurrentLang();
+    document.querySelectorAll('[data-i18n-fr]').forEach(el => {
+        const fr = el.getAttribute('data-i18n-fr') || '';
+        const en = el.getAttribute('data-i18n-en') || fr;
+        el.textContent = lang === 'en' ? en : (lang === 'bilingual' ? fr + ' · ' + en : fr);
+    });
+    document.querySelectorAll('[data-i18n-fr-placeholder]').forEach(el => {
+        const fr = el.getAttribute('data-i18n-fr-placeholder') || '';
+        const en = el.getAttribute('data-i18n-en-placeholder') || fr;
+        el.placeholder = lang === 'en' ? en : (lang === 'bilingual' ? fr + ' · ' + en : fr);
+    });
+    // Coche le bon radio si la modale Apparence est ouverte
+    const radio = document.querySelector('input[name="lang-choice"][value="' + lang + '"]');
+    if (radio) radio.checked = true;
+    document.documentElement.setAttribute('lang', lang === 'en' ? 'en' : 'fr');
+}
+function setLanguage(lang) {
+    if (lang !== 'fr' && lang !== 'en' && lang !== 'bilingual') lang = 'fr';
+    try { localStorage.setItem(I18N_KEY, lang); } catch {}
+    applyI18n();
+}
+// Wire les radios + apply au DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+    applyI18n();
+    document.addEventListener('change', (e) => {
+        if (e.target && e.target.name === 'lang-choice') setLanguage(e.target.value);
+    });
+});
+
 function fetchLocalModels() {
     // Modèles locaux non supportés dans GoudAI
     return Promise.resolve([]);
@@ -57,6 +102,14 @@ const AUDIO_SETTINGS = {
     summaryModel: 'gpt-4.1-2025-04-14',
     roleOptimizeModel: 'claude-sonnet-4-5-20250929'
 };
+
+// C4: pré-chargement voix Web Speech API (Chrome les charge async).
+// On déclenche getVoices() au boot et on ré-écoute voiceschanged pour
+// que la première lecture system trouve déjà la voix fr-FR.
+if ('speechSynthesis' in window) {
+    try { speechSynthesis.getVoices(); } catch {}
+    speechSynthesis.addEventListener('voiceschanged', () => { try { speechSynthesis.getVoices(); } catch {} });
+}
 
 async function loadAudioSettingsFromServer() {
     try {
@@ -828,23 +881,58 @@ document.querySelectorAll('.sp-toggle').forEach(toggle => {
 const sidebarToggle = document.getElementById('sidebar-toggle');
 const sidebar = document.getElementById('sidebar');
 
+// C3: helpers fermeture sidebar mobile (utilises par overlay click,
+// ESC, redimensionnement passe desktop, et le bouton X dans la sidebar).
+function closeMobileSidebar() {
+    sidebar.classList.remove('open');
+    const overlay = document.getElementById('_sidebar_overlay');
+    if (overlay) overlay.classList.remove('active');
+    document.body.classList.remove('sidebar-locked');
+}
+// Bouton X de la sidebar (visible uniquement <=768px via CSS) -> ferme propre.
+const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
+if (sidebarCloseBtn) sidebarCloseBtn.addEventListener('click', closeMobileSidebar);
+
+function ensureSidebarOverlay() {
+    let overlay = document.getElementById('_sidebar_overlay');
+    if (overlay) return overlay;
+    overlay = document.createElement('div');
+    overlay.id = '_sidebar_overlay';
+    overlay.className = 'sidebar-overlay';
+    overlay.addEventListener('click', closeMobileSidebar);
+    document.body.appendChild(overlay);
+    return overlay;
+}
+
 sidebarToggle.addEventListener('click', () => {
     if (window.innerWidth <= 768) {
         const isOpen = sidebar.classList.toggle('open');
-        let overlay = document.getElementById('_sidebar_overlay');
+        const overlay = ensureSidebarOverlay();
         if (isOpen) {
-            if (!overlay) {
-                overlay = document.createElement('div');
-                overlay.id = '_sidebar_overlay';
-                overlay.style.cssText = 'position:fixed;inset:0;z-index:299;background:rgba(0,0,0,0.5)';
-                overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.remove(); });
-                document.body.appendChild(overlay);
-            }
-        } else { document.getElementById('_sidebar_overlay')?.remove(); }
+            overlay.classList.add('active');
+            document.body.classList.add('sidebar-locked');
+        } else {
+            overlay.classList.remove('active');
+            document.body.classList.remove('sidebar-locked');
+        }
     } else {
         const collapsed = sidebar.classList.toggle('collapsed');
         sidebarToggle.classList.toggle('collapsed', collapsed);
         sidebarToggle.title = collapsed ? 'Afficher le panneau' : 'Masquer le panneau';
+    }
+});
+
+// C3: ESC ferme la sidebar mobile
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sidebar.classList.contains('open') && window.innerWidth <= 768) {
+        closeMobileSidebar();
+    }
+});
+
+// C3: si on repasse en desktop pendant que sidebar mobile est ouverte, nettoyer
+window.addEventListener('resize', () => {
+    if (window.innerWidth > 768 && sidebar.classList.contains('open')) {
+        closeMobileSidebar();
     }
 });
 
@@ -972,27 +1060,24 @@ enhancePromptBtn.addEventListener('click', async () => {
 function updatePromptToolbar() {
     if (!composerToolbar) return;
     const hasText = promptInput.value.trim() !== '';
-    const showInsert  = !hasText && originalPromptBeforeEnhance === null;
-    const showEnhance = hasText && originalPromptBeforeEnhance === null;
-    const showRevert  = originalPromptBeforeEnhance !== null;
-    const showSave    = hasText || showRevert;
+    const isRevert = originalPromptBeforeEnhance !== null;
 
-    toolbarInsertBtn.style.display  = showInsert  ? 'inline-flex' : 'none';
-    toolbarSaveBtn.style.display    = showSave    ? 'inline-flex' : 'none';
+    // Insert et Enhance toujours visibles (Enhance disabled si pas de texte).
+    // Save visible des qu'il y a du texte.
+    toolbarInsertBtn.style.display = isRevert ? 'none' : 'inline-flex';
+    toolbarSaveBtn.style.display   = (hasText || isRevert) ? 'inline-flex' : 'none';
 
-    if (showRevert) {
-        toolbarEnhanceBtn.style.display = 'inline-flex';
+    toolbarEnhanceBtn.style.display = 'inline-flex';
+    if (isRevert) {
         toolbarEnhanceBtn.classList.add('revert');
         toolbarEnhanceBtn.title = 'Revenir au prompt original';
         toolbarEnhanceBtn.querySelector('.btn-label').textContent = 'Revenir au prompt original';
-    } else if (showEnhance) {
-        toolbarEnhanceBtn.style.display = 'inline-flex';
-        toolbarEnhanceBtn.classList.remove('revert');
-        toolbarEnhanceBtn.title = isEnhancing ? 'Amélioration en cours…' : 'Améliorer le prompt';
-        toolbarEnhanceBtn.querySelector('.btn-label').textContent = isEnhancing ? 'Amélioration…' : 'Améliorer le prompt';
-        toolbarEnhanceBtn.disabled = isEnhancing;
+        toolbarEnhanceBtn.disabled = false;
     } else {
-        toolbarEnhanceBtn.style.display = 'none';
+        toolbarEnhanceBtn.classList.remove('revert');
+        toolbarEnhanceBtn.title = isEnhancing ? 'Amélioration en cours…' : (hasText ? 'Améliorer le prompt' : 'Tapez du texte pour activer');
+        toolbarEnhanceBtn.querySelector('.btn-label').textContent = isEnhancing ? 'Amélioration…' : 'Améliorer le prompt';
+        toolbarEnhanceBtn.disabled = isEnhancing || !hasText;
     }
 }
 
@@ -1303,6 +1388,26 @@ const EDITEUR_LABELS = {
 };
 const EDITEUR_ORDER = ['openai', 'anthropic', 'google', 'mistral', 'perplexity', 'local'];
 
+// R7: ProviderMark avec icones SVG reconnaissables des providers IA
+// (Claude burst, OpenAI flower, Gemini sparkle, etc.) — formes geometriques
+// inspirees des marques publiques, dessinees a la main pour eviter copyright.
+const PROVIDER_MARKS = {
+    openai:     { hue: 158, svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M21.55 10.13a5.94 5.94 0 0 0-.51-4.88 6 6 0 0 0-6.47-2.88A6 6 0 0 0 4.99 4.62a5.94 5.94 0 0 0-3.97 2.88 6 6 0 0 0 .74 7.04 5.94 5.94 0 0 0 .51 4.88 6 6 0 0 0 6.47 2.88 5.99 5.99 0 0 0 9.58-1.83 5.94 5.94 0 0 0 3.97-2.88 6 6 0 0 0-.74-7.04zM13.07 20.84a4.45 4.45 0 0 1-2.86-1.04l.14-.08 4.74-2.74a.78.78 0 0 0 .39-.68v-6.69l2 1.16a.07.07 0 0 1 .04.05v5.54a4.45 4.45 0 0 1-4.45 4.48zM3.5 16.78A4.45 4.45 0 0 1 2.97 14.3l.14.08 4.74 2.74a.78.78 0 0 0 .79 0l5.79-3.34v2.31a.07.07 0 0 1-.03.06l-4.79 2.77a4.45 4.45 0 0 1-6.11-1.63zM2.26 7.62A4.45 4.45 0 0 1 4.6 5.66v5.64a.78.78 0 0 0 .39.67l5.78 3.34-2 1.15a.07.07 0 0 1-.07 0l-4.78-2.77a4.45 4.45 0 0 1-1.63-6.07zm16.42 3.83-5.79-3.35 2-1.15a.07.07 0 0 1 .07 0l4.79 2.77a4.46 4.46 0 0 1-.67 8.05v-5.64a.78.78 0 0 0-.4-.68zm1.99-2.99-.14-.08-4.74-2.74a.78.78 0 0 0-.79 0L9.21 9V6.66a.07.07 0 0 1 .03-.06l4.79-2.77a4.45 4.45 0 0 1 6.61 4.63zM8.13 12.55l-2-1.15a.07.07 0 0 1-.04-.05V5.81a4.45 4.45 0 0 1 7.31-3.41l-.14.08L8.51 5.21a.78.78 0 0 0-.39.69zm1.08-2.34L11.79 8.7l2.59 1.5v3l-2.59 1.5-2.58-1.5z"/></svg>' },
+    anthropic:  { hue: 28,  svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M13.93 3.5h3.7l6.87 17h-3.7l-1.4-3.62h-7.18l-1.4 3.62H7.12L13.93 3.5zm-.62 10.78h4.94l-2.47-6.4-2.47 6.4zM4.92 3.5h3.7L1.74 20.5H-1.96l6.88-17z" transform="translate(2)"/></svg>' },
+    google:     { hue: 220, svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5L12 2z"/></svg>' },
+    mistral:    { hue: 35,  svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><rect x="2" y="2" width="4" height="4"/><rect x="8" y="2" width="4" height="4"/><rect x="14" y="2" width="4" height="4"/><rect x="20" y="2" width="2" height="4"/><rect x="2" y="8" width="4" height="4"/><rect x="14" y="8" width="4" height="4"/><rect x="2" y="14" width="4" height="4"/><rect x="8" y="14" width="4" height="4"/><rect x="14" y="14" width="4" height="4"/><rect x="2" y="20" width="4" height="2"/><rect x="14" y="20" width="4" height="2"/><rect x="20" y="14" width="2" height="4"/></svg>' },
+    grok:       { hue: 0,   svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M3 3h4l5 7-5 7H3l5-7L3 3zm9 0h4l5 7-5 7h-4l5-7-5-7z"/></svg>' },
+    deepseek:   { hue: 250, svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M22 4c-2 1-4 1.5-6 2-3-2-7-2-10 0C4 5 2.5 4 2 3c0 3 1 5 3 6.5-.5 1-1 2-1 3.5 0 4 4 7 8 7s8-3 8-7c0-1.5-.5-2.5-1-3.5C21 8 22 7 22 4zm-9 12.5c-2.2 0-4-1.5-4-3.5s1.8-3.5 4-3.5 4 1.5 4 3.5-1.8 3.5-4 3.5zm0-5c-.8 0-1.5.7-1.5 1.5s.7 1.5 1.5 1.5 1.5-.7 1.5-1.5-.7-1.5-1.5-1.5z"/></svg>' },
+    perplexity: { hue: 190, svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/></svg>' },
+    zai:        { hue: 280, svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M4 4h16v3l-9 10h9v3H4v-3l9-10H4V4z"/></svg>' },
+    local:      { hue: 270, svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>' },
+    openrouter: { hue: 30,  svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/><circle cx="5" cy="12" r="2" fill="currentColor"/></svg>' }
+};
+function providerMarkHtml(editeur) {
+    const p = PROVIDER_MARKS[editeur] || { hue: 270, svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>' };
+    return `<span class="provider-mark" style="--provider-hue:${p.hue}" aria-label="${editeur}">${p.svg}</span>`;
+}
+
 // Tooltip partagé pour les infos modèle
 const _tooltip = document.createElement('div');
 _tooltip.id = 'custom-select-tooltip';
@@ -1325,6 +1430,37 @@ document.addEventListener('mouseout', (e) => {
     const info = e.target.closest('.custom-select-info');
     if (info) _tooltip.classList.remove('visible');
 });
+
+// === Unified Model Selector (C1) =================================
+// Wrapper visuel autour des 3 selects natifs (Texte/Image/Recherche).
+// Les selects natifs restent la source de vérité — pas d'adaptation
+// des call sites. setActiveTab(tab) bascule visuellement le panel
+// affiché. Auto-switch quand un select reçoit une valeur (clic
+// utilisateur ou restore programmatique).
+function setActiveTab(tab) {
+    if (tab !== 'text' && tab !== 'image' && tab !== 'search') return;
+    document.querySelectorAll('.ums-tab').forEach(el => {
+        const a = el.dataset.umsTab === tab;
+        el.classList.toggle('active', a);
+        el.setAttribute('aria-selected', a ? 'true' : 'false');
+    });
+    document.querySelectorAll('.ums-panel').forEach(el => {
+        el.classList.toggle('active', el.dataset.umsPanel === tab);
+    });
+    // Fermer un dropdown custom-select ouvert dans un panel non actif
+    document.querySelectorAll('.ums-panel:not(.active) .custom-select.open')
+        .forEach(el => el.classList.remove('open'));
+}
+
+function initUnifiedModelSelector() {
+    document.querySelectorAll('.ums-tab').forEach(t => {
+        t.addEventListener('click', () => setActiveTab(t.dataset.umsTab));
+    });
+    // Sync initial selon quel select porte une valeur
+    if (imageModelSelect.value) setActiveTab('image');
+    else if (searchModelSelect.value) setActiveTab('search');
+    else setActiveTab('text');
+}
 
 function upgradeToCustomSelect(selectEl) {
     // Créer le DOM personnalisé
@@ -1363,6 +1499,11 @@ function upgradeToCustomSelect(selectEl) {
             selectEl._customValue = v || '';
             updateTriggerDisplay(selectEl);
             updateActiveOption(selectEl);
+            // C1: si ce select est rattaché à un onglet UMS et qu'on
+            // pose une valeur non vide, basculer l'onglet visible.
+            if (v && selectEl._umsTab && typeof setActiveTab === 'function') {
+                setActiveTab(selectEl._umsTab);
+            }
         },
         configurable: true
     });
@@ -1478,6 +1619,8 @@ function populateCustomSelect(selectEl, models, tarifFn) {
                 }
             }
             html += `<div class="custom-select-option" data-value="${m.id}" title="${(m.description||'').replace(/"/g,'&quot;')}">`;
+            // R6: ProviderMark badge devant le nom (design system)
+            html += providerMarkHtml(m.editeur);
             html += `<div class="custom-select-option-text">`;
             html += `<span class="custom-select-option-name">${m.label}</span>`;
             if (priceStr) html += `<span class="custom-select-option-price">${priceStr}</span>`;
@@ -1498,6 +1641,11 @@ initConfig().then(async () => {
     upgradeToCustomSelect(modelSelect);
     upgradeToCustomSelect(imageModelSelect);
     upgradeToCustomSelect(searchModelSelect);
+    // C1: rattacher chaque select à son onglet UMS pour l'auto-switch
+    modelSelect._umsTab = 'text';
+    imageModelSelect._umsTab = 'image';
+    searchModelSelect._umsTab = 'search';
+    initUnifiedModelSelector();
     populateModelSelect();
     populateImageModelSelect();
     populateSearchModelSelect();
@@ -2125,6 +2273,12 @@ function addMessage(role, content, citations, generationTime, thinking) {
         }
 
         function ttsDoSpeak() {
+            // C4: provider 'system' → Web Speech API (gratuit, pas de blob).
+            const provider = (typeof AUDIO_SETTINGS !== 'undefined' && AUDIO_SETTINGS.ttsProvider) || 'openai';
+            if (provider === 'system') {
+                ttsDoSpeakSystem();
+                return;
+            }
             ttsGenerate((blob) => {
                 if (ttsCachedUrl) URL.revokeObjectURL(ttsCachedUrl);
                 ttsCachedUrl = URL.createObjectURL(blob);
@@ -2140,7 +2294,50 @@ function addMessage(role, content, citations, generationTime, thinking) {
             });
         }
 
+        // C4: lecture via Web Speech API (provider 'system' = navigateur).
+        // currentTtsAudio reçoit un stub avec .pause() qui appelle
+        // speechSynthesis.cancel() — le bouton arrêt global continue de marcher.
+        function ttsDoSpeakSystem() {
+            if (!('speechSynthesis' in window)) {
+                alert('La synthèse vocale du système n\'est pas disponible dans ce navigateur.');
+                return;
+            }
+            const text = ttsGetText();
+            if (!text) return;
+            speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'fr-FR';
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            const voices = speechSynthesis.getVoices();
+            const frVoice = voices.find(v => v.lang === 'fr-FR') || voices.find(v => v.lang.startsWith('fr'));
+            if (frVoice) utterance.voice = frVoice;
+
+            ttsIcon.innerHTML = iconStop;
+            ttsBtn.title = 'Arrêter la lecture';
+
+            const stub = {
+                _isSystem: true,
+                pause: () => speechSynthesis.cancel(),
+                currentTime: 0
+            };
+            currentTtsAudio = stub;
+
+            const cleanup = () => {
+                if (currentTtsAudio === stub) currentTtsAudio = null;
+                ttsReset();
+            };
+            utterance.onend = cleanup;
+            utterance.onerror = cleanup;
+            speechSynthesis.speak(utterance);
+        }
+
         function ttsDoSave() {
+            const provider = (typeof AUDIO_SETTINGS !== 'undefined' && AUDIO_SETTINGS.ttsProvider) || 'openai';
+            if (provider === 'system') {
+                alert('La synthèse vocale système ne permet pas d\'enregistrer un fichier audio. Choisissez un provider cloud (OpenAI…) dans Configuration › Audio.');
+                return;
+            }
             ttsGenerate((blob) => {
                 ttsReset();
                 const url = URL.createObjectURL(blob);
@@ -4723,5 +4920,175 @@ window.updateImageParamsVisibility = updateImageParamsVisibility;
     triggerBtn.addEventListener('click', openFaq);
     closeBtn.addEventListener('click', closeFaq);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) closeFaq(); });
+})();
+
+// === R4 redesign: Command palette ⌘K ====================================
+// Recherche fuzzy dans : conversations, roles, prompts enregistres, modeles
+// texte/image/recherche, et 5 actions rapides. Navigation clavier.
+(function() {
+    const overlay = document.getElementById('cmd-palette-overlay');
+    const input = document.getElementById('cmd-palette-input');
+    const results = document.getElementById('cmd-palette-results');
+    if (!overlay || !input || !results) return;
+
+    let activeIndex = 0;
+    let currentItems = [];
+
+    function buildItems(query) {
+        const q = (query || '').toLowerCase().trim();
+        const items = [];
+
+        // R6: SVG line-art (stroke 1.5) au lieu d'emojis pour rester coherent
+        // avec le design system (Icon library design-system.jsx).
+        const SVG = {
+            plus:    '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+            settings:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+            theme:   '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18"/></svg>',
+            help:    '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>',
+            chart:   '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+            chat:    '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+            user:    '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+            sparkle: '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 6.8L21 11l-6.6 2.2L12 20l-2.4-6.8L3 11l6.6-2.2z"/></svg>'
+        };
+
+        // Actions rapides
+        const actions = [
+            { icon: SVG.plus,     label: t('Nouvelle conversation', 'New conversation'), meta: 'Action', run: () => document.getElementById('new-chat-btn')?.click() },
+            { icon: SVG.settings, label: t('Ouvrir Configuration', 'Open Settings'),     meta: 'Action', run: () => document.getElementById('config-btn')?.click() },
+            { icon: SVG.theme,    label: t('Basculer le thème', 'Toggle theme'),         meta: 'Action', run: () => document.getElementById('theme-toggle')?.click() },
+            { icon: SVG.help,     label: t('Ouvrir la FAQ', 'Open FAQ'),                 meta: 'Action', run: () => document.getElementById('faq-btn')?.click() },
+            { icon: SVG.chart,    label: t('Voir le dashboard', 'Open dashboard'),       meta: 'Action', run: () => document.getElementById('dashboard-btn')?.click() }
+        ];
+        actions.forEach(a => {
+            if (!q || a.label.toLowerCase().includes(q)) items.push({ group: t('Actions', 'Actions'), ...a });
+        });
+
+        // Conversations
+        if (typeof window.conversations === 'object' && window.conversations) {
+            Object.entries(window.conversations).slice(0, 50).forEach(([fname, c]) => {
+                const title = c.title || fname;
+                if (!q || title.toLowerCase().includes(q)) {
+                    items.push({
+                        group: t('Conversations', 'Conversations'),
+                        icon: SVG.chat, label: title,
+                        meta: c.model || '',
+                        run: () => { window.loadConversation && window.loadConversation(fname); }
+                    });
+                }
+            });
+        }
+
+        // Roles
+        if (Array.isArray(window.systemPrompts)) {
+            window.systemPrompts.slice(0, 30).forEach(sp => {
+                if (!q || (sp.nom || '').toLowerCase().includes(q)) {
+                    items.push({
+                        group: t('Rôles', 'Roles'),
+                        icon: SVG.user, label: sp.nom || 'Sans nom',
+                        meta: 'Role',
+                        run: () => { /* selectionner ce role */
+                            const sel = document.getElementById('sp-select');
+                            if (sel) { sel.value = sp.nom; sel.dispatchEvent(new Event('change')); }
+                        }
+                    });
+                }
+            });
+        }
+
+        // Modeles
+        if (Array.isArray(window.MODELS)) {
+            window.MODELS.slice(0, 50).forEach(m => {
+                if (!q || (m.label || '').toLowerCase().includes(q) || (m.id || '').toLowerCase().includes(q)) {
+                    items.push({
+                        group: t('Modèles texte', 'Text models'),
+                        icon: SVG.sparkle, label: m.label,
+                        meta: m.editeur || '',
+                        run: () => {
+                            const sel = document.getElementById('model-select');
+                            if (sel) { sel.value = m.id; sel.dispatchEvent(new Event('change')); }
+                        }
+                    });
+                }
+            });
+        }
+
+        return items.slice(0, 80);
+    }
+
+    function render() {
+        if (currentItems.length === 0) {
+            results.innerHTML = `<div class="cmd-palette-empty">${t('Aucun résultat', 'No results')}</div>`;
+            return;
+        }
+        let lastGroup = null;
+        let html = '';
+        currentItems.forEach((item, i) => {
+            if (item.group !== lastGroup) {
+                html += `<div class="cmd-palette-group">${item.group}</div>`;
+                lastGroup = item.group;
+            }
+            const escLabel = (item.label || '').replace(/</g, '&lt;');
+            const escMeta = (item.meta || '').replace(/</g, '&lt;');
+            html += `<div class="cmd-palette-item ${i === activeIndex ? 'active' : ''}" data-cmd-index="${i}">
+                <span class="cmd-palette-item-icon">${item.icon || '•'}</span>
+                <span class="cmd-palette-item-text">${escLabel}</span>
+                ${escMeta ? `<span class="cmd-palette-item-meta">${escMeta}</span>` : ''}
+            </div>`;
+        });
+        results.innerHTML = html;
+        // Scroll dans la vue
+        const active = results.querySelector('.cmd-palette-item.active');
+        if (active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest' });
+    }
+
+    function refresh() {
+        currentItems = buildItems(input.value);
+        if (activeIndex >= currentItems.length) activeIndex = 0;
+        render();
+    }
+
+    function openPalette() {
+        overlay.style.display = 'flex';
+        input.value = '';
+        activeIndex = 0;
+        refresh();
+        setTimeout(() => input.focus(), 0);
+    }
+    function closePalette() {
+        overlay.style.display = 'none';
+    }
+    function runActive() {
+        const item = currentItems[activeIndex];
+        if (!item) return;
+        closePalette();
+        try { item.run(); } catch (e) { console.error('cmd-palette:', e); }
+    }
+
+    // Raccourcis globaux
+    document.addEventListener('keydown', (e) => {
+        const isMac = /mac|ipod|iphone|ipad/i.test(navigator.platform);
+        const cmd = isMac ? e.metaKey : e.ctrlKey;
+        if (cmd && (e.key === 'k' || e.key === 'K')) {
+            e.preventDefault();
+            if (overlay.style.display === 'flex') closePalette(); else openPalette();
+        }
+        if (overlay.style.display !== 'flex') return;
+        if (e.key === 'Escape') { e.preventDefault(); closePalette(); }
+        if (e.key === 'ArrowDown') { e.preventDefault(); activeIndex = Math.min(currentItems.length - 1, activeIndex + 1); render(); }
+        if (e.key === 'ArrowUp')   { e.preventDefault(); activeIndex = Math.max(0, activeIndex - 1); render(); }
+        if (e.key === 'Enter')     { e.preventDefault(); runActive(); }
+    });
+
+    input.addEventListener('input', () => { activeIndex = 0; refresh(); });
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closePalette(); });
+    results.addEventListener('click', (e) => {
+        const row = e.target.closest('.cmd-palette-item');
+        if (!row) return;
+        activeIndex = parseInt(row.dataset.cmdIndex || '0', 10);
+        runActive();
+    });
+
+    // Expose pour debug / autres triggers
+    window.openCmdPalette = openPalette;
 })();
 

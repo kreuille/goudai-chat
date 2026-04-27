@@ -119,8 +119,14 @@ function renderCanvas() {
     </div>`).join('');
 
   // ── HEADER ACTIONS ──
+  // Mobile fix: bouton "retour discussion" pinned a gauche, toujours visible
+  // (les boutons d'action de droite peuvent deborder sur petit ecran).
   const headerHtml = `
     <div class="canvas-header">
+      <button class="canvas-action-btn canvas-btn-back-mobile" id="cv-back-btn" title="Retour à la discussion" aria-label="Retour">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <span class="back-label" style="display:none">Discussion</span>
+      </button>
       <div class="canvas-header-left">${tabsHtml}</div>
       <div class="canvas-header-right">
         <button class="canvas-action-btn ${canvasState.editMode ? 'active' : ''}" id="cv-edit-btn">
@@ -222,6 +228,7 @@ function bindCanvasEvents(tab) {
 
   // Fermer panel
   document.getElementById('cv-close-btn')?.addEventListener('click', closeCanvas);
+  document.getElementById('cv-back-btn')?.addEventListener('click', closeCanvas);
 
   // Tabs click
   panel?.querySelectorAll('.canvas-tab').forEach(t => {

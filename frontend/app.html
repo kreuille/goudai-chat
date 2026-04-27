@@ -17,8 +17,8 @@
     <meta name="apple-mobile-web-app-title" content="GoudAI Chat">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
 
-    <link rel="stylesheet" href="css/style.css?v=13">
-    <link rel="stylesheet" href="css/canvas.css?v=43">
+    <link rel="stylesheet" href="css/style.css?v=23">
+    <link rel="stylesheet" href="css/canvas.css?v=47">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <!-- Apply dark mode before paint -->
     <!-- Anti-FOUC (issue #14) : applique body.dark/body et le bg correct
@@ -44,15 +44,21 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
     </button>
     <aside class="sidebar" id="sidebar">
-        <button id="sidebar-close-btn" onclick="document.getElementById('sidebar').classList.remove('open');document.getElementById('_sidebar_overlay')?.remove();" style="display:none;position:absolute;top:12px;right:12px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--text);z-index:9999;padding:4px 8px;border-radius:6px;">×</button>
-        <h1 class="sidebar-title"><span class="sidebar-logo">🧀 GoudAI Chat <span class="version-badge">2.0</span></h1>
+        <!-- Le handler est attache par JS (closeMobileSidebar) — onclick inline retire
+             car il faisait overlay.remove() au lieu de overlay.classList.remove('active'),
+             laissant le body.sidebar-locked actif. -->
+        <button id="sidebar-close-btn" type="button" style="display:none;position:absolute;top:12px;right:12px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--text);z-index:9999;padding:4px 8px;border-radius:6px;">×</button>
+        <!-- R1 rebrand : monogramme G geometrique a la place du fromage -->
+        <!-- R7: GoudMark identique au design — transform "translate(0,0) scale(0.78) translate(4.5,4.5)"
+             reproduit fidelement (ordre SVG = right-to-left donc translate(4.5,4.5) applique en premier). -->
+        <h1 class="sidebar-title"><span class="sidebar-logo"><svg class="goud-mark" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="3" width="26" height="26" rx="7" fill="currentColor"/><path transform="translate(0,0) scale(0.78) translate(4.5,4.5)" d="M22 11h-6a5 5 0 0 0-5 5v0a5 5 0 0 0 5 5h2v-4h-2v-2h6v6a5 5 0 0 1-5 5h-1a9 9 0 0 1-9-9v0a9 9 0 0 1 9-9h6z" fill="#ffffff"/></svg> goudai <span class="version-badge">2.0</span></span></h1>
         <a href="https://www.linkedin.com/in/arnaudguedou/" target="_blank" rel="noopener noreferrer" class="sidebar-credit">by Arnaud Guedou</a>
-        <button id="new-chat-btn" class="new-chat-btn">+ Nouvelle conversation</button>
+        <button id="new-chat-btn" class="new-chat-btn" data-i18n-fr="+ Nouvelle conversation" data-i18n-en="+ New conversation">+ Nouvelle conversation</button>
 
         <div class="sp-section">
             <div class="sp-header">
                 <span class="sp-toggle" data-target="sp-content">&#9656;</span>
-                <span class="sp-title">Rôles</span>
+                <span class="sp-title" data-i18n-fr="Rôles" data-i18n-en="Roles">Rôles</span>
                 <button id="sp-import-btn" class="sp-add-btn" title="Importer un rôle">&#8681;</button>
                 <button id="sp-add-btn" class="sp-add-btn" title="Créer un rôle">+</button>
                 <input type="file" id="sp-import-file" accept=".json" hidden>
@@ -65,7 +71,7 @@
         <div class="sp-section">
             <div class="sp-header">
                 <span class="sp-toggle" data-target="pr-content">&#9656;</span>
-                <span class="sp-title">Prompts enregistrés</span>
+                <span class="sp-title" data-i18n-fr="Prompts enregistrés" data-i18n-en="Saved prompts">Prompts enregistrés</span>
                 <button id="pr-add-btn" class="sp-add-btn" title="Créer un prompt">+</button>
             </div>
             <div id="pr-content" class="sp-collapsible collapsed">
@@ -76,10 +82,10 @@
         <div class="sp-section" id="conv-sp-section">
             <div class="sp-header">
                 <span class="sp-toggle" data-target="conv-content">&#9656;</span>
-                <span class="sp-title">Conversations</span>
+                <span class="sp-title" data-i18n-fr="Conversations" data-i18n-en="Conversations">Conversations</span>
             </div>
             <div id="conv-content" class="sp-collapsible collapsed">
-                <input type="text" id="conv-search" placeholder="Rechercher...">
+                <input type="text" id="conv-search" placeholder="Rechercher..." data-i18n-fr-placeholder="Rechercher..." data-i18n-en-placeholder="Search...">
                 <div id="cat-bar" class="cat-bar">
                     <div id="cat-icons" class="cat-icons"></div>
                     <button id="cat-add-btn" class="cat-add-btn" title="Nouvelle catégorie">+</button>
@@ -125,19 +131,42 @@
         </div>
 
         <div id="model-alert" class="model-alert" style="display:none">Veuillez choisir un modèle avant d'envoyer.</div>
+        <!-- Custom select unifié (C1) : 3 onglets [Texte/Image/Recherche]
+             qui exposent visuellement chacun un seul des 3 selects natifs.
+             Les selects natifs (#model-select, #image-model-select, #search-model-select)
+             restent la source de vérité — aucune adaptation des call sites. -->
         <div class="model-bar" id="model-bar">
-            <label for="model-select" class="model-label">Modèle texte :</label>
-            <select id="model-select" class="model-select"><option value="">—</option></select>
-            <label for="image-model-select" class="model-label">Modèle image :</label>
-            <select id="image-model-select" class="model-select"><option value="">—</option></select>
-            <label for="image-format-select" class="model-label" id="image-format-label" style="display:none;">Format :</label>
-            <select id="image-format-select" class="model-select" style="display:none;">
-                <option value="square">Carré</option>
-                <option value="vertical">Vertical</option>
-                <option value="horizontal">Horizontal</option>
-            </select>
-            <label for="search-model-select" class="model-label">Modèle recherche :</label>
-            <select id="search-model-select" class="model-select"><option value="">—</option></select>
+            <div class="ums" id="ums">
+                <div class="ums-tabs" role="tablist">
+                    <!-- R6: SVG line-art au lieu d'emojis 💬🎨🔍 -->
+                    <button type="button" class="ums-tab active" data-ums-tab="text" role="tab" aria-selected="true">
+                        <span class="ums-tab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span><span class="ums-tab-label" data-i18n-fr="Texte" data-i18n-en="Text">Texte</span>
+                    </button>
+                    <button type="button" class="ums-tab" data-ums-tab="image" role="tab" aria-selected="false">
+                        <span class="ums-tab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg></span><span class="ums-tab-label" data-i18n-fr="Image" data-i18n-en="Image">Image</span>
+                    </button>
+                    <button type="button" class="ums-tab" data-ums-tab="search" role="tab" aria-selected="false">
+                        <span class="ums-tab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><span class="ums-tab-label" data-i18n-fr="Recherche" data-i18n-en="Search">Recherche</span>
+                    </button>
+                </div>
+                <div class="ums-panels">
+                    <div class="ums-panel active" data-ums-panel="text" role="tabpanel">
+                        <select id="model-select" class="model-select"><option value="">—</option></select>
+                    </div>
+                    <div class="ums-panel" data-ums-panel="image" role="tabpanel">
+                        <select id="image-model-select" class="model-select"><option value="">—</option></select>
+                        <label for="image-format-select" class="model-label" id="image-format-label" style="display:none;">Format :</label>
+                        <select id="image-format-select" class="model-select" style="display:none;">
+                            <option value="square">Carré</option>
+                            <option value="vertical">Vertical</option>
+                            <option value="horizontal">Horizontal</option>
+                        </select>
+                    </div>
+                    <div class="ums-panel" data-ums-panel="search" role="tabpanel">
+                        <select id="search-model-select" class="model-select"><option value="">—</option></select>
+                    </div>
+                </div>
+            </div>
             <span class="model-bar-spacer"></span>
             <label for="sp-select" class="model-label">Rôle :</label>
             <select id="sp-select" class="model-select"><option value="">Aucun</option></select>
@@ -156,11 +185,11 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 </button>
                 <input type="file" id="file-input" accept="image/*,.pdf,.txt,.md,.csv,.json,.xml,.log,.js,.py,.html,.css" multiple hidden>
-                <textarea id="prompt-input" class="prompt-input" placeholder="Écrivez votre message..." rows="1"></textarea>
+                <textarea id="prompt-input" class="prompt-input" placeholder="Écrivez votre message..." data-i18n-fr-placeholder="Écrivez votre message..." data-i18n-en-placeholder="Type your message..." rows="1"></textarea>
                 <button id="enhance-prompt-btn" class="enhance-prompt-btn" title="Améliorer le prompt" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8L19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2L19 5"/><path d="M11 6.2L9.7 5"/><path d="M11 11.8L9.7 13"/><path d="M2 21l9-9"/></svg></button>
                 <button id="prompt-picker-btn" title="Insérer un prompt enregistré"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg></button>
                 <button id="mic-btn" class="mic-btn" title="Dicter"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="1" width="6" height="12" rx="3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
-                <button id="send-btn" class="send-btn" disabled>OK</button>
+                <button id="send-btn" class="send-btn" disabled data-i18n-fr="OK" data-i18n-en="Send">OK</button>
             </div>
             <!-- Toolbar inline (Kiro v3): boutons d'action visibles avec labels.
                  La machine d'etat updatePromptToolbar() affiche selon le contexte :
@@ -403,13 +432,13 @@
         <div class="sp-modal config-modal">
             <h3>Configuration</h3>
             <div class="config-tabs">
-                <button class="config-tab active" data-config-tab="keys"      type="button">Clés API</button>
-                <button class="config-tab"        data-config-tab="audio"     type="button">Audio</button>
-                <button class="config-tab"        data-config-tab="budget"    type="button">Budget</button>
-                <button class="config-tab"        data-config-tab="appearance" type="button">Apparence</button>
-                <button class="config-tab"        data-config-tab="stats"     type="button">Stats</button>
-                <button class="config-tab"        data-config-tab="faq"       type="button">FAQ</button>
-                <button class="config-tab"        data-config-tab="share"     type="button">Partager</button>
+                <button class="config-tab active" data-config-tab="keys"      type="button" data-i18n-fr="Clés API"  data-i18n-en="API Keys">Clés API</button>
+                <button class="config-tab"        data-config-tab="audio"     type="button" data-i18n-fr="Audio"     data-i18n-en="Audio">Audio</button>
+                <button class="config-tab"        data-config-tab="budget"    type="button" data-i18n-fr="Budget"    data-i18n-en="Budget">Budget</button>
+                <button class="config-tab"        data-config-tab="appearance" type="button" data-i18n-fr="Apparence" data-i18n-en="Appearance">Apparence</button>
+                <button class="config-tab"        data-config-tab="stats"     type="button" data-i18n-fr="Stats"     data-i18n-en="Stats">Stats</button>
+                <button class="config-tab"        data-config-tab="faq"       type="button" data-i18n-fr="FAQ"       data-i18n-en="FAQ">FAQ</button>
+                <button class="config-tab"        data-config-tab="share"     type="button" data-i18n-fr="Partager"  data-i18n-en="Share">Partager</button>
             </div>
 
             <!-- Onglet Clés API (9 providers : 7 existants + Z.ai + OpenRouter) -->
@@ -496,25 +525,33 @@
 
             <!-- Onglet Apparence -->
             <div class="config-tab-panel" data-config-panel="appearance">
-                <p class="apikey-intro">Ajustez l'apparence de l'interface.</p>
-                <label class="sp-modal-label">Thème</label>
+                <p class="apikey-intro" data-i18n-fr="Ajustez l'apparence de l'interface." data-i18n-en="Customize the interface appearance.">Ajustez l'apparence de l'interface.</p>
+                <label class="sp-modal-label" data-i18n-fr="Thème" data-i18n-en="Theme">Thème</label>
+                <!-- R6: SVG line-art design system (stroke 1.5) au lieu d'emojis -->
                 <div class="theme-choice-row">
-                    <label class="theme-choice"><input type="radio" name="theme-choice" value="dark"><span>🌙 Sombre</span></label>
-                    <label class="theme-choice"><input type="radio" name="theme-choice" value="light"><span>☀️ Clair</span></label>
-                    <label class="theme-choice"><input type="radio" name="theme-choice" value="auto"><span>🖥 Auto (système)</span></label>
+                    <label class="theme-choice"><input type="radio" name="theme-choice" value="dark"><span><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><span data-i18n-fr="Sombre" data-i18n-en="Dark">Sombre</span></span></label>
+                    <label class="theme-choice"><input type="radio" name="theme-choice" value="light"><span><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><span data-i18n-fr="Clair" data-i18n-en="Light">Clair</span></span></label>
+                    <label class="theme-choice"><input type="radio" name="theme-choice" value="auto"><span><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span data-i18n-fr="Auto (système)" data-i18n-en="Auto (system)">Auto (système)</span></span></label>
+                </div>
+                <!-- R3: selecteur de langue (FR / EN / Bilingue) -->
+                <label class="sp-modal-label" style="margin-top:18px" data-i18n-fr="Langue" data-i18n-en="Language">Langue</label>
+                <div class="theme-choice-row">
+                    <label class="theme-choice"><input type="radio" name="lang-choice" value="fr" checked><span>🇫🇷 Français</span></label>
+                    <label class="theme-choice"><input type="radio" name="lang-choice" value="en"><span>🇬🇧 English</span></label>
+                    <label class="theme-choice"><input type="radio" name="lang-choice" value="bilingual"><span>🌐 FR · EN</span></label>
                 </div>
             </div>
 
             <!-- Onglet Stats : ouvre la modale dashboard existante (deja riche, on ne duplique pas) -->
             <div class="config-tab-panel" data-config-panel="stats">
                 <p class="apikey-intro">Consultez vos statistiques d'utilisation détaillées (par modèle, par provider, par période) dans le dashboard.</p>
-                <button id="config-open-dashboard" type="button" class="sp-modal-btn sp-modal-btn-save" style="margin-top:16px">📊 Ouvrir le dashboard détaillé →</button>
+                <button id="config-open-dashboard" type="button" class="sp-modal-btn sp-modal-btn-save" style="margin-top:16px;display:inline-flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span data-i18n-fr="Ouvrir le dashboard détaillé" data-i18n-en="Open detailed dashboard">Ouvrir le dashboard détaillé</span> <span style="opacity:.7">→</span></button>
             </div>
 
             <!-- Onglet FAQ : ouvre la modale FAQ autonome (PR8) -->
             <div class="config-tab-panel" data-config-panel="faq">
                 <p class="apikey-intro">Consultez les questions fréquentes (Général, Usage, Problèmes courants).</p>
-                <button id="config-open-faq" type="button" class="sp-modal-btn sp-modal-btn-save" style="margin-top:16px">❓ Ouvrir la FAQ →</button>
+                <button id="config-open-faq" type="button" class="sp-modal-btn sp-modal-btn-save" style="margin-top:16px;display:inline-flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span data-i18n-fr="Ouvrir la FAQ" data-i18n-en="Open FAQ">Ouvrir la FAQ</span> <span style="opacity:.7">→</span></button>
             </div>
 
             <!-- Onglet Partager -->
@@ -582,14 +619,35 @@
         </div>
     </div>
 
+    <!-- R4 redesign: Command palette ⌘K. Recherche conversations / roles / prompts / modeles
+         + actions rapides. Navigation clavier (flèches + Enter), ESC pour fermer. -->
+    <div id="cmd-palette-overlay" class="cmd-palette-overlay" style="display:none">
+        <div class="cmd-palette" role="dialog" aria-label="Command palette">
+            <div class="cmd-palette-search">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <input id="cmd-palette-input" type="text" autocomplete="off" spellcheck="false"
+                    placeholder="Rechercher une conversation, un rôle, un modèle, ou une action..."
+                    data-i18n-fr-placeholder="Rechercher une conversation, un rôle, un modèle, ou une action..."
+                    data-i18n-en-placeholder="Search a conversation, role, model, or action...">
+                <kbd class="cmd-palette-kbd">ESC</kbd>
+            </div>
+            <div id="cmd-palette-results" class="cmd-palette-results"></div>
+            <div class="cmd-palette-footer">
+                <span><kbd class="cmd-palette-kbd">↑↓</kbd> <span data-i18n-fr="naviguer" data-i18n-en="navigate">naviguer</span></span>
+                <span><kbd class="cmd-palette-kbd">↵</kbd> <span data-i18n-fr="sélectionner" data-i18n-en="select">sélectionner</span></span>
+                <span><kbd class="cmd-palette-kbd">⌘K</kbd> <span data-i18n-fr="ouvrir" data-i18n-en="open">ouvrir</span></span>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="models.js"></script>
     <script src="js/faq.js?v=1"></script>
     <script src="js/auth.js"></script>
-    <script src="js/api.js?v=5"></script>
+    <script src="js/api.js?v=6"></script>
     <script src="js/filemanager.js"></script>
-    <script src="js/app.js?v=91"></script>
+    <script src="js/app.js?v=100"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
@@ -599,7 +657,7 @@
       }
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <script src="js/canvas.js?v=43"></script>
+    <script src="js/canvas.js?v=45"></script>
 
 <script>
 (function() {

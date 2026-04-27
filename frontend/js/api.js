@@ -421,20 +421,25 @@ async function streamOpenAI(modelId, conversationHistory, onChunk, onDone, onErr
 }
 
 // ===================== Anthropic (Messages API) =====================
-async function streamAnthropic(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal) {
+async function streamAnthropic(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal, modelParams) {
     try {
         const messages = formatMessagesForProvider(conversationHistory, 'anthropic');
 
         // Activer l'extended thinking pour Claude Opus et Sonnet
         const isThinkingModel = modelId.includes('opus') || modelId.includes('sonnet');
+        // C2: budget_tokens proportionnel à reasoning_effort. Defaults : medium (10000).
+        // Anthropic minimum = 1024.
+        const ANTHROPIC_BUDGET = { minimal: 1024, low: 4096, medium: 10000, high: 20000 };
+        const requestedEffort = modelParams && modelParams.reasoning_effort;
+        const budgetTokens = (requestedEffort && ANTHROPIC_BUDGET[requestedEffort]) || 10000;
         const body = {
             model: modelId,
-            max_tokens: isThinkingModel ? 16000 : 8192,
+            max_tokens: isThinkingModel ? Math.max(16000, budgetTokens + 4096) : 8192,
             messages,
             stream: true
         };
         if (isThinkingModel) {
-            body.thinking = { type: 'enabled', budget_tokens: 10000 };
+            body.thinking = { type: 'enabled', budget_tokens: budgetTokens };
         }
         if (systemPrompt) body.system = systemPrompt;
         if (webSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
@@ -511,7 +516,7 @@ async function streamAnthropic(modelId, conversationHistory, onChunk, onDone, on
 }
 
 // ===================== Google Gemini (generateContent streaming) =====================
-async function streamGoogle(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal) {
+async function streamGoogle(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal, modelParams) {
     try {
         const contents = formatMessagesForProvider(conversationHistory, 'google');
 
@@ -520,10 +525,19 @@ async function streamGoogle(modelId, conversationHistory, onChunk, onDone, onErr
         const body = { contents };
         if (systemPrompt) body.systemInstruction = { parts: [{ text: systemPrompt }] };
         if (webSearch) body.tools = [{ google_search: {} }];
-        // Activer le thinking pour les modèles Pro
-        if (modelId.includes('pro') || modelId.includes('flash')) {
+        // Activer le thinking pour les modèles Pro/Flash et Gemma 4
+        if (modelId.includes('pro') || modelId.includes('flash') || modelId.startsWith('gemma-4')) {
             body.generationConfig = body.generationConfig || {};
-            body.generationConfig.thinkingConfig = { includeThoughts: true };
+            // C2: thinkingBudget proportionnel à reasoning_effort.
+            // Google : 0 = thinking désactivé, -1 = dynamique. Defaults dynamic.
+            const GOOGLE_BUDGET = { minimal: 0, low: 4096, medium: 8192, high: 24576 };
+            const requestedEffort = modelParams && modelParams.reasoning_effort;
+            const cfg = { includeThoughts: true };
+            if (requestedEffort && GOOGLE_BUDGET[requestedEffort] !== undefined) {
+                cfg.thinkingBudget = GOOGLE_BUDGET[requestedEffort];
+                if (cfg.thinkingBudget === 0) cfg.includeThoughts = false;
+            }
+            body.generationConfig.thinkingConfig = cfg;
         }
 
         const response = await fetch(url, {
@@ -738,6 +752,13 @@ async function streamOpenAICompat(modelId, baseUrl, apiKey, conversationHistory,
             if (modelParams.max_tokens !== undefined)         body.max_tokens         = modelParams.max_tokens;
             if (modelParams.frequency_penalty !== undefined)  body.frequency_penalty  = modelParams.frequency_penalty;
             if (modelParams.presence_penalty !== undefined)   body.presence_penalty   = modelParams.presence_penalty;
+            // C2: GLM (Z.ai) — toggle binaire raisonnement via thinking.type.
+            // 'high' active le raisonnement (emet <think>...</think>), sinon disabled.
+            if (modelParams.reasoning_effort && /^glm-5(\.|$)/.test(modelId)) {
+                body.thinking = {
+                    type: modelParams.reasoning_effort === 'high' ? 'enabled' : 'disabled'
+                };
+            }
         }
         const response = await fetch(baseUrl, {
             method: 'POST',

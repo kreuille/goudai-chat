@@ -27,7 +27,7 @@
 .main.canvas-open .chat-wrapper {
   flex: 0 0 45%;
   min-width: 280px;
-  border-right: 1px solid rgba(255,255,255,0.08);
+  border-right: 1px solid var(--border);
 }
 
 /* ── Canvas Panel (droite) ──────────────────────────────────────── */
@@ -39,7 +39,7 @@
   flex-direction: column;
   overflow: hidden;
   transition: flex-basis 0.25s ease, width 0.25s ease;
-  background: #0f0d14;
+  background: var(--bg-modal);
 }
 
 .canvas-panel.open {
@@ -55,8 +55,8 @@
   justify-content: space-between;
   padding: 0 12px;
   height: 44px;
-  background: #0f0d14;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-modal);
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   gap: 8px;
 }
@@ -79,7 +79,7 @@
   padding: 6px 14px;
   font-size: 12.5px;
   font-weight: 500;
-  color: rgba(255,255,255,0.4);
+  color: var(--text-muted);
   cursor: pointer;
   border-radius: 6px 6px 0 0;
   white-space: nowrap;
@@ -88,18 +88,18 @@
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
 }
-.canvas-tab:hover { color: rgba(255,255,255,0.7); }
+.canvas-tab:hover { color: var(--text-secondary); }
 .canvas-tab.active {
   color: #fff;
-  border-bottom-color: #c9a84c;
-  background: rgba(255,255,255,0.04);
+  border-bottom-color: var(--accent);
+  background: var(--bg-hover);
 }
 
 .canvas-tab-icon { font-size: 13px; opacity: 0.8; }
 .canvas-tab-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
 .canvas-tab-close {
   background: none; border: none;
-  color: rgba(255,255,255,0.3);
+  color: var(--text-muted);
   cursor: pointer; font-size: 15px; line-height: 1;
   padding: 0 2px; border-radius: 3px;
   transition: all 0.15s;
@@ -120,33 +120,33 @@
   gap: 5px;
   padding: 5px 10px;
   background: transparent;
-  border: 1px solid rgba(255,255,255,0.12);
+  border: 1px solid var(--border-input);
   border-radius: 6px;
-  color: rgba(255,255,255,0.6);
+  color: var(--text-secondary);
   font-size: 12px;
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
 }
 .canvas-action-btn:hover {
-  background: rgba(255,255,255,0.06);
+  background: var(--border-light);
   color: #fff;
-  border-color: rgba(255,255,255,0.25);
+  border-color: var(--text-muted);
 }
 .canvas-action-btn.active {
-  background: #c9a84c;
+  background: var(--accent);
   color: #000;
-  border-color: #c9a84c;
+  border-color: var(--accent);
   font-weight: 600;
 }
 .canvas-action-btn.primary {
-  background: rgba(201,168,76,0.12);
-  border-color: rgba(201,168,76,0.4);
-  color: #c9a84c;
+  background: var(--accent-soft);
+  border-color: var(--accent-glow);
+  color: var(--accent);
 }
 .canvas-action-btn.primary:hover {
-  background: rgba(201,168,76,0.2);
-  border-color: #c9a84c;
+  background: var(--accent-glow);
+  border-color: var(--accent);
 }
 .canvas-btn-close-panel {
   padding: 5px 8px !important;
@@ -166,8 +166,8 @@
   align-items: center;
   gap: 2px;
   padding: 6px 14px;
-  background: #0d0b12;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: var(--bg-sidebar);
+  border-bottom: 1px solid var(--border-light);
   flex-shrink: 0;
 }
 
@@ -177,12 +177,12 @@
   background: none;
   border: none;
   border-radius: 5px;
-  color: rgba(255,255,255,0.4);
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.15s;
 }
-.canvas-view-btn:hover { color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.04); }
-.canvas-view-btn.active { color: #fff; background: rgba(255,255,255,0.08); }
+.canvas-view-btn:hover { color: var(--text-secondary); background: var(--bg-hover); }
+.canvas-view-btn.active { color: #fff; background: var(--border); }
 
 /* ── Zone contenu ───────────────────────────────────────────────── */
 
@@ -200,7 +200,7 @@
   overflow: auto;
   padding: 0;
   margin: 0;
-  background: #0f0d14;
+  background: var(--bg-modal);
 }
 .canvas-code-view code {
   display: block;
@@ -216,8 +216,8 @@
   flex: 1;
   width: 100%;
   height: 100%;
-  background: #0f0d14;
-  color: #e8e0d0;
+  background: var(--bg-modal);
+  color: var(--text);
   border: none;
   outline: none;
   padding: 20px 24px;
@@ -228,7 +228,7 @@
   tab-size: 2;
 }
 .canvas-editor:focus {
-  box-shadow: inset 2px 0 0 #c9a84c;
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 /* Preview iframe */
@@ -255,8 +255,8 @@
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  background: #1a1724;
-  border: 1px solid rgba(255,255,255,0.12);
+  background: var(--bg-modal);
+  border: 1px solid var(--border-input);
   border-radius: 10px;
   min-width: 230px;
   z-index: 300;
@@ -268,7 +268,7 @@
 
 .canvas-export-section {
   padding: 6px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid var(--border-light);
 }
 .canvas-export-section:last-child { border-bottom: none; }
 .canvas-export-section-label {
@@ -276,7 +276,7 @@
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: rgba(255,255,255,0.3);
+  color: var(--text-muted);
 }
 
 .canvas-export-item {
@@ -287,13 +287,13 @@
   padding: 8px 14px;
   background: none;
   border: none;
-  color: rgba(255,255,255,0.8);
+  color: var(--text);
   font-size: 13px;
   cursor: pointer;
   text-align: left;
   transition: background 0.12s;
 }
-.canvas-export-item:hover { background: rgba(255,255,255,0.06); }
+.canvas-export-item:hover { background: var(--border-light); }
 .canvas-export-icon { font-size: 15px; width: 20px; text-align: center; }
 
 /* ── Historique versions ────────────────────────────────────────── */
@@ -302,8 +302,8 @@
   position: absolute;
   top: 0; right: 0; bottom: 0;
   width: 280px;
-  background: #13111a;
-  border-left: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-sidebar);
+  border-left: 1px solid var(--border);
   z-index: 200;
   display: flex;
   flex-direction: column;
@@ -317,13 +317,13 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid var(--border);
   font-size: 13px;
   font-weight: 600;
-  color: rgba(255,255,255,0.8);
+  color: var(--text);
 }
 .canvas-history-close {
-  background: none; border: none; color: rgba(255,255,255,0.4);
+  background: none; border: none; color: var(--text-muted);
   cursor: pointer; font-size: 18px; line-height: 1; padding: 2px;
 }
 .canvas-history-close:hover { color: #fff; }
@@ -332,22 +332,22 @@
 
 .canvas-history-item {
   padding: 10px 14px;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid var(--bg-hover);
   cursor: pointer;
   transition: background 0.12s;
 }
-.canvas-history-item:hover { background: rgba(255,255,255,0.04); }
-.canvas-history-item.current { background: rgba(201,168,76,0.08); }
+.canvas-history-item:hover { background: var(--bg-hover); }
+.canvas-history-item.current { background: var(--accent-soft); }
 
 .canvas-history-time {
   font-size: 11px;
-  color: #c9a84c;
+  color: var(--accent);
   font-weight: 600;
   margin-bottom: 3px;
 }
 .canvas-history-snippet {
   font-size: 11px;
-  color: rgba(255,255,255,0.35);
+  color: var(--text-muted);
   font-family: monospace;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -357,16 +357,16 @@
   display: inline-block;
   margin-top: 5px;
   padding: 2px 8px;
-  background: rgba(201,168,76,0.15);
-  border: 1px solid rgba(201,168,76,0.3);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-glow);
   border-radius: 4px;
-  color: #c9a84c;
+  color: var(--accent);
   font-size: 11px;
   cursor: pointer;
   transition: all 0.12s;
 }
 .canvas-history-restore-btn:hover {
-  background: #c9a84c;
+  background: var(--accent);
   color: #000;
 }
 
@@ -378,26 +378,120 @@
   gap: 6px;
   padding: 5px 12px;
   margin: 6px 0;
-  background: rgba(201,168,76,0.08);
-  border: 1px solid rgba(201,168,76,0.25);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-glow);
   border-radius: 8px;
-  color: #c9a84c;
+  color: var(--accent);
   font-size: 12.5px;
   cursor: pointer;
   transition: all 0.15s;
   user-select: none;
 }
 .canvas-inline-badge:hover {
-  background: rgba(201,168,76,0.18);
-  border-color: #c9a84c;
+  background: var(--accent-glow);
+  border-color: var(--accent);
 }
 
 /* ── Mobile ─────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
   .main.canvas-open .chat-wrapper { display: none; }
-  .canvas-panel.open { flex: 0 0 100%; width: 100%; }
+  .canvas-panel.open {
+    flex: 0 0 100% !important;
+    width: 100% !important;
+    /* Fix mobile: canvas en surface dessus du conteneur main, pas en flex
+       (sinon les regles flex du chat-wrapper le repoussent). */
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 1500;
+    height: 100dvh;
+    border-left: none !important;
+  }
+  /* Header canvas: padding safe-area iOS + bouton X plus visible */
+  .canvas-panel.open .canvas-header {
+    padding-top: env(safe-area-inset-top, 0px);
+    height: calc(48px + env(safe-area-inset-top, 0px));
+  }
+  /* Bouton X plus large en mobile (tap target 44x44) */
+  .canvas-panel.open .canvas-btn-close-panel {
+    min-width: 36px !important;
+    min-height: 36px !important;
+    font-size: 20px !important;
+    background: var(--accent-soft) !important;
+    color: var(--accent) !important;
+    border-color: var(--accent-glow) !important;
+  }
+  /* Subtoolbar plus compact, avec scroll horizontal si necessaire */
+  .canvas-panel.open .canvas-subtoolbar {
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 4px 8px;
+  }
+  .canvas-panel.open .canvas-subtoolbar::-webkit-scrollbar { display: none; }
+  /* Iframe et editor prennent toute la hauteur restante */
+  .canvas-panel.open .canvas-body { height: calc(100dvh - 88px - env(safe-area-inset-top, 0px)); }
+  /* Editor anti-zoom iOS */
+  .canvas-panel.open .canvas-editor { font-size: 16px !important; }
+  /* History panel: full width sur mobile */
+  .canvas-panel.open .canvas-history-panel { width: 100% !important; }
+
+  /* Bouton retour discussion mobile : visible, large, pin a gauche
+     avec label texte "Discussion" + fleche. */
+  .canvas-panel.open .canvas-btn-back-mobile {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 40px !important;
+    padding: 6px 12px !important;
+    background: var(--accent) !important;
+    color: var(--btn-text) !important;
+    border-color: var(--accent) !important;
+    font-weight: 600;
+    font-size: 13px !important;
+    flex-shrink: 0;
+  }
+  .canvas-panel.open .canvas-btn-back-mobile svg {
+    flex-shrink: 0;
+  }
+  /* Label texte 'Discussion' visible (par defaut le span est cache mobile) */
+  .canvas-panel.open .canvas-btn-back-mobile .back-label {
+    display: inline !important;
+    font-size: 13px !important;
+  }
+
+  /* Masquer la roue crenelée (right-panel-toggle) et le burger sidebar
+     quand le canvas est ouvert en mobile — ils sont a z-index < 1500
+     mais peuvent depasser via leur propre stacking context. */
+  body:has(.canvas-panel.open) .right-panel-toggle,
+  body:has(.canvas-panel.open) .sidebar-toggle {
+    display: none !important;
+  }
+
+  /* Compacter les autres boutons d'action — icone seule, sans texte */
+  .canvas-panel.open .canvas-header-right .canvas-action-btn {
+    padding: 6px 8px !important;
+    font-size: 0 !important;
+    min-width: 34px;
+    min-height: 34px;
+  }
+  .canvas-panel.open .canvas-header-right .canvas-action-btn svg {
+    width: 15px !important;
+    height: 15px !important;
+  }
+  /* Le X ferme conserve son symbole texte */
+  .canvas-panel.open .canvas-btn-close-panel {
+    font-size: 20px !important;
+  }
+  /* Compteur d'history : petit badge accent, garde son chiffre */
+  .canvas-panel.open #cv-history-btn {
+    font-size: 12px !important;
+    color: var(--accent) !important;
+  }
 }
+
+/* Bouton retour discussion : cache en desktop (l'utilisateur a le X a droite) */
+.canvas-btn-back-mobile { display: none; }
 
 /* ── Bouton flottant réouvrir canvas ────────────────────────────── */
 .canvas-reopen-fab {
@@ -409,10 +503,10 @@
   align-items: center;
   gap: 7px;
   padding: 7px 14px;
-  background: #1a1724;
-  border: 1px solid rgba(201,168,76,0.4);
+  background: var(--bg-modal);
+  border: 1px solid var(--accent-glow);
   border-radius: 20px;
-  color: #c9a84c;
+  color: var(--accent);
   font-size: 12.5px;
   font-weight: 500;
   cursor: pointer;
@@ -420,10 +514,10 @@
   box-shadow: 0 2px 12px rgba(0,0,0,0.4);
 }
 .canvas-reopen-fab:hover {
-  background: rgba(201,168,76,0.15);
-  border-color: #c9a84c;
+  background: var(--accent-soft);
+  border-color: var(--accent);
   color: #e0c070;
-  box-shadow: 0 4px 20px rgba(201,168,76,0.2);
+  box-shadow: 0 4px 20px var(--accent-glow);
 }
 .canvas-reopen-fab svg {
   opacity: 0.85;
@@ -441,32 +535,32 @@
   gap: 8px;
   margin-top: 14px;
   padding-top: 12px;
-  border-top: 1px solid rgba(255,255,255,0.08);
+  border-top: 1px solid var(--border);
 }
 .chat-doc-download-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 7px 16px;
-  background: rgba(201,168,76,0.12);
-  border: 1px solid rgba(201,168,76,0.35);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-glow);
   border-radius: 8px;
-  color: #c9a84c;
+  color: var(--accent);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.15s;
   font-weight: 500;
 }
 .chat-doc-download-btn:hover {
-  background: rgba(201,168,76,0.22);
-  border-color: #c9a84c;
+  background: var(--accent-glow);
+  border-color: var(--accent);
 }
 .chat-doc-download-btn.secondary {
-  background: rgba(255,255,255,0.04);
-  border-color: rgba(255,255,255,0.15);
-  color: rgba(255,255,255,0.6);
+  background: var(--bg-hover);
+  border-color: var(--border-input);
+  color: var(--text-secondary);
 }
 .chat-doc-download-btn.secondary:hover {
-  background: rgba(255,255,255,0.08);
-  color: rgba(255,255,255,0.9);
+  background: var(--border);
+  color: var(--text);
 }
