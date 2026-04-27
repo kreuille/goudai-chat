@@ -951,3 +951,59 @@ async function transcribeAudio(audioBlob, onDone, onError) {
         onDone(data.text);
     } catch (err) { onError(err); }
 }
+
+// ===================== Amélioration de prompt (text + image) =====================
+// Utilisé par le bouton "Améliorer le prompt" du composer.
+// Stream de Kiro v3 : appelle streamModel() avec le modèle defini dans
+// AUDIO_SETTINGS.enhanceModel et un template d'instruction qui demande
+// au modèle de réécrire le prompt utilisateur.
+
+const ENHANCE_PROMPT_TEMPLATE = `Tu es un expert en prompt engineering. Voici un prompt écrit par un utilisateur pour une IA conversationnelle :
+
+---
+{TEXT}
+---
+
+Améliore ce prompt pour obtenir un meilleur résultat de l'IA. Tu dois :
+- Conserver fidèlement l'intention et le sens du prompt original
+- Ne pas dénaturer ni changer le sujet ou la demande
+- Compléter, reformuler, structurer et préciser le prompt
+- Ajouter du contexte utile si nécessaire
+- Rendre les instructions plus claires et sans ambiguïté
+
+Réponds UNIQUEMENT avec le prompt amélioré. Pas d'introduction, pas de conclusion, pas de commentaire, pas de texte avant ou après. Ne commence pas par "Voici" ou toute autre phrase d'accroche. Retourne directement le contenu du prompt optimisé, rien d'autre.`;
+
+const ENHANCE_IMAGE_PROMPT_TEMPLATE = `Tu es un expert en génération d'images par IA. Voici un prompt de génération d'image brut :
+
+---
+{TEXT}
+---
+
+Améliore ce prompt pour obtenir une meilleure image générée par IA. Tu dois :
+- Conserver fidèlement l'intention et le sujet de l'image demandée
+- Ajouter des détails visuels précis (éclairage, angle, style, couleurs, composition, ambiance)
+- Préciser le style artistique si pertinent (photoréaliste, illustration, peinture, 3D, etc.)
+- Structurer le prompt de manière optimale pour un modèle de génération d'image
+- Rester en anglais pour une meilleure compatibilité avec les modèles d'image
+- Ne jamais citer de personnages, œuvres, marques, logos ou noms protégés par le droit d'auteur ; reformuler en décrivant les caractéristiques visuelles à la place
+
+Réponds UNIQUEMENT avec le prompt amélioré. Pas d'introduction, pas de conclusion, pas de commentaire, pas de texte avant ou après. Ne commence pas par "Voici" ou toute autre phrase d'accroche. Retourne directement le contenu du prompt optimisé, rien d'autre.`;
+
+async function enhancePrompt(text, onDelta, onDone, onError, isImage = false) {
+    const template = isImage ? ENHANCE_IMAGE_PROMPT_TEMPLATE : ENHANCE_PROMPT_TEMPLATE;
+    const prompt = template.replace('{TEXT}', text);
+    const modelId = (typeof AUDIO_SETTINGS !== 'undefined' && AUDIO_SETTINGS.enhanceModel) || 'gpt-4.1-2025-04-14';
+
+    // Réutilise streamModel() existant (provider dispatch + streaming).
+    streamModel(
+        modelId,
+        [{ role: 'user', content: prompt }],
+        (chunk) => onDelta(chunk),                  // onChunk
+        (fullText, inputTokens, outputTokens) => onDone(fullText), // onDone
+        (err) => onError(err),                       // onError
+        null,                                        // systemPrompt
+        false,                                       // webSearch
+        null,                                        // onThinkingChunk (ignoré pour enhance)
+        null                                         // signal
+    );
+}
