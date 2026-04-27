@@ -7,7 +7,9 @@ var API_KEYS = {
     perplexity: '',
     mistral: '',
     grok: '',
-    deepseek: ''
+    deepseek: '',
+    zai: '',         // Zhipu AI (GLM-5/5.1/4.7) — endpoint OpenAI-compatible
+    openrouter: ''   // OpenRouter (Flux 2 image models) — wiring image dans une PR ulterieure
 };
 
 // Modèles et tarifs — chargés depuis models.json par loadModels()
@@ -223,6 +225,10 @@ function streamModel(modelId, conversationHistory, onChunk, onDone, onError, sys
             return streamOpenAICompat(modelId, 'https://api.x.ai/v1/chat/completions', API_KEYS.grok, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal);
         case 'deepseek':
             return streamOpenAICompat(modelId, 'https://api.deepseek.com/v1/chat/completions', API_KEYS.deepseek, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, true);
+        case 'zai':
+            // Zhipu AI (GLM family). Compatible OpenAI Chat Completions.
+            // hasThinkTags=true: les modeles GLM-5/5.1 emettent <think>...</think> en mode raisonnement.
+            return streamOpenAICompat(modelId, 'https://api.z.ai/api/paas/v4/chat/completions', API_KEYS.zai, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, true);
         default:
             onError(new Error(`Éditeur inconnu pour le modèle ${modelId}`));
     }
