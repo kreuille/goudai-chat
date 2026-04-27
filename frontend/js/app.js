@@ -1438,6 +1438,7 @@ initConfig().then(async () => {
     populateSearchModelSelect();
     updateTokenDisplay();
     updateWebSearchBtn();
+    updateEffortSection(currentModel);
     refreshConvList();
     refreshCatBar();
     await importDefaultSystemPrompts();
@@ -1503,6 +1504,7 @@ modelSelect.addEventListener('change', () => {
     }
     const newModel = currentModel || currentImageModel || currentSearchModel;
     updateWebSearchBtn();
+    updateEffortSection(currentModel);
     if (conversationStarted && prevModel && newModel && prevModel !== newModel) {
         addModelSwitch(prevModel, newModel);
     }
@@ -1532,6 +1534,7 @@ imageModelSelect.addEventListener('change', () => {
     }
     const newModel = currentModel || currentImageModel || currentSearchModel;
     updateWebSearchBtn();
+    updateEffortSection(currentModel);
     if (conversationStarted && prevModel && newModel && prevModel !== newModel) {
         addModelSwitch(prevModel, newModel);
     }
@@ -1556,6 +1559,7 @@ searchModelSelect.addEventListener('change', () => {
     }
     const newModel = currentModel || currentImageModel || currentSearchModel;
     updateWebSearchBtn();
+    updateEffortSection(currentModel);
     if (conversationStarted && prevModel && newModel && prevModel !== newModel) {
         addModelSwitch(prevModel, newModel);
     }
@@ -2383,7 +2387,8 @@ function regenerateLastResponse() {
                 if (thinkContent) thinkContent.innerHTML = marked.parse(fullThinking);
                 scrollToBottom();
             },
-            currentAbortController.signal
+            currentAbortController.signal,
+            (typeof getModelParams === 'function') ? getModelParams() : undefined
         );
     }
 }
@@ -2745,7 +2750,8 @@ function sendMessage() {
                 if (thinkContent) thinkContent.innerHTML = marked.parse(fullThinking);
                 scrollToBottom();
             },
-            currentAbortController.signal
+            currentAbortController.signal,
+            (typeof getModelParams === 'function') ? getModelParams() : undefined
         );
     }
 }
@@ -4289,6 +4295,111 @@ function updateCanvasReopenBtn() {
         document.body.appendChild(d);
     }, 1500);
 })();
+
+// ─────────── Right panel - onglet General : sliders + reasoning (Kiro v3 - PR4) ───────────
+// Defaults Kiro v3 pour le bouton "Reset".
+const MODEL_PARAMS_DEFAULTS = {
+    'temperature':       { value: 0.7,   display: '0.7' },
+    'top-p':             { value: 1,     display: '1.0' },
+    'max-tokens':        { value: 4096,  display: '4096' },
+    'freq-penalty':      { value: 0,     display: '0.0' },
+    'presence-penalty':  { value: 0,     display: '0.0' }
+};
+const PARAM_IDS = ['temperature', 'top-p', 'max-tokens', 'freq-penalty', 'presence-penalty'];
+
+// Affichage de la valeur courante d'un slider (gere les decimales selon step)
+function _rpFormatRangeValue(rangeEl) {
+    const v = parseFloat(rangeEl.value);
+    const step = rangeEl.step;
+    if (step.includes('.')) return v.toFixed(1);
+    return String(parseInt(rangeEl.value));
+}
+
+// Wire : input + change event sur chaque slider/toggle
+PARAM_IDS.forEach(id => {
+    const range  = document.getElementById('rp-' + id + '-range');
+    const value  = document.getElementById('rp-' + id + '-value');
+    const toggle = document.getElementById('rp-' + id + '-toggle');
+    if (!range || !toggle) return;
+    range.addEventListener('input', () => { if (value) value.textContent = _rpFormatRangeValue(range); });
+    toggle.addEventListener('change', () => {
+        const section = toggle.closest('.right-panel-section');
+        if (section) section.classList.toggle('rp-param-disabled', !toggle.checked);
+    });
+});
+// Toggle pour la section reasoning effort (select au lieu de range)
+const _rpEffortToggle = document.getElementById('rp-effort-toggle');
+if (_rpEffortToggle) {
+    _rpEffortToggle.addEventListener('change', () => {
+        const section = _rpEffortToggle.closest('.right-panel-section');
+        if (section) section.classList.toggle('rp-param-disabled', !_rpEffortToggle.checked);
+    });
+}
+
+// Visibilité du select effort selon le modele courant.
+// Appelee a chaque change de model (#text-model-select) + au boot.
+function updateEffortSection(modelId) {
+    const section = document.getElementById('rp-effort-section');
+    const select  = document.getElementById('rp-effort-select');
+    if (!section || !select) return;
+    if (!modelId || typeof supportsReasoningEffort !== 'function' || !supportsReasoningEffort(modelId)) {
+        section.style.display = 'none';
+        return;
+    }
+    section.style.display = '';
+    // Adapte les options du select aux niveaux disponibles pour ce modele
+    const levels = (typeof getEffortLevels === 'function') ? getEffortLevels(modelId) : ['minimal', 'low', 'medium', 'high'];
+    const labels = { minimal: 'Minimal', low: 'Faible', medium: 'Moyen', high: 'Élevé' };
+    const previous = select.value;
+    select.innerHTML = levels.map(l =>
+        `<option value="${l}"${l === previous ? ' selected' : ''}>${labels[l] || l}</option>`
+    ).join('');
+    // Si la valeur precedente n'est plus dans la liste, fallback sur 'medium' ou 1ere option
+    if (!levels.includes(previous)) select.value = levels.includes('medium') ? 'medium' : levels[0];
+}
+
+// Collect tous les params (uniquement ceux dont la checkbox est cochee).
+function getModelParams() {
+    const out = {};
+    const v = (id, parser) => {
+        const toggle = document.getElementById('rp-' + id + '-toggle');
+        const range  = document.getElementById('rp-' + id + '-range');
+        if (!toggle || !toggle.checked || !range) return undefined;
+        return parser(range.value);
+    };
+    const t = v('temperature', parseFloat);   if (t !== undefined) out.temperature = t;
+    const p = v('top-p', parseFloat);          if (p !== undefined) out.top_p = p;
+    const m = v('max-tokens', parseInt);       if (m !== undefined) out.max_tokens = m;
+    const f = v('freq-penalty', parseFloat);   if (f !== undefined) out.frequency_penalty = f;
+    const r = v('presence-penalty', parseFloat); if (r !== undefined) out.presence_penalty = r;
+    const eToggle = document.getElementById('rp-effort-toggle');
+    const eSelect = document.getElementById('rp-effort-select');
+    if (eToggle && eToggle.checked && eSelect) out.reasoning_effort = eSelect.value;
+    return out;
+}
+window.getModelParams = getModelParams;
+
+// Reset : remet aux defaults + decoche tous les toggles
+const _rpResetBtn = document.getElementById('rp-params-reset-btn');
+if (_rpResetBtn) {
+    _rpResetBtn.addEventListener('click', () => {
+        for (const [id, def] of Object.entries(MODEL_PARAMS_DEFAULTS)) {
+            const range = document.getElementById('rp-' + id + '-range');
+            const display = document.getElementById('rp-' + id + '-value');
+            const toggle = document.getElementById('rp-' + id + '-toggle');
+            if (range) range.value = def.value;
+            if (display) display.textContent = def.display;
+            if (toggle) {
+                toggle.checked = false;
+                toggle.closest('.right-panel-section')?.classList.add('rp-param-disabled');
+            }
+        }
+        if (_rpEffortToggle) {
+            _rpEffortToggle.checked = false;
+            _rpEffortToggle.closest('.right-panel-section')?.classList.add('rp-param-disabled');
+        }
+    });
+}
 
 // ─────────── Right panel (Kiro v3 - PR3) ───────────
 // Wiring du panneau lateral droit (3e colonne) avec onglets Général / Image.

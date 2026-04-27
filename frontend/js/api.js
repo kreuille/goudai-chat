@@ -321,7 +321,7 @@ function streamModel(modelId, conversationHistory, onChunk, onDone, onError, sys
 }
 
 // ===================== OpenAI (API Responses) =====================
-async function streamOpenAI(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal) {
+async function streamOpenAI(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal, modelParams) {
     try {
         const input = formatMessagesForProvider(conversationHistory, 'openai');
 
@@ -333,10 +333,20 @@ async function streamOpenAI(modelId, conversationHistory, onChunk, onDone, onErr
         if (systemPrompt) body.instructions = systemPrompt;
         if (webSearch) body.tools = [{ type: 'web_search_preview' }];
         // Activer le raisonnement : o-series et GPT-5.x
+        // PR4 Kiro v3 : modelParams.reasoning_effort surcharge le defaut 'medium' si fourni.
+        const requestedEffort = modelParams && modelParams.reasoning_effort;
         if (modelId.startsWith('o3') || modelId.startsWith('o4') || modelId.startsWith('o1')) {
-            body.reasoning = { summary: 'auto' };
+            body.reasoning = requestedEffort
+                ? { effort: requestedEffort, summary: 'auto' }
+                : { summary: 'auto' };
         } else if (modelId.startsWith('gpt-5')) {
-            body.reasoning = { effort: 'medium', summary: 'auto' };
+            body.reasoning = { effort: requestedEffort || 'medium', summary: 'auto' };
+        }
+        // PR4 Kiro v3 : params LLM standards (Responses API utilise max_output_tokens)
+        if (modelParams) {
+            if (modelParams.temperature !== undefined) body.temperature = modelParams.temperature;
+            if (modelParams.top_p !== undefined)       body.top_p       = modelParams.top_p;
+            if (modelParams.max_tokens !== undefined)  body.max_output_tokens = modelParams.max_tokens;
         }
 
         const response = await fetch('https://api.openai.com/v1/responses', {
@@ -707,7 +717,7 @@ async function streamPerplexity(modelId, conversationHistory, onChunk, onDone, o
 
 
 // ── OpenAI-Compatible : Mistral / Grok / DeepSeek ────────────────
-async function streamOpenAICompat(modelId, baseUrl, apiKey, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, hasThinkTags = false) {
+async function streamOpenAICompat(modelId, baseUrl, apiKey, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, hasThinkTags = false, modelParams) {
     try {
         const messages = [];
         if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
@@ -717,10 +727,22 @@ async function streamOpenAICompat(modelId, baseUrl, apiKey, conversationHistory,
                 : Array.isArray(msg.content) ? msg.content.map(p => p.type === 'text' ? p.text : '').filter(Boolean).join('\n') : '';
             messages.push({ role: msg.role, content: text });
         }
+        // PR4 Kiro v3 : injecte les modelParams optionnels (temperature, top_p,
+        // max_tokens, frequency_penalty, presence_penalty) dans le body Chat
+        // Completions standard. Le reasoning_effort par swap de model
+        // (deepseek-chat -> deepseek-reasoner) sera gere dans une PR future.
+        const body = { model: modelId, messages, stream: true };
+        if (modelParams) {
+            if (modelParams.temperature !== undefined)        body.temperature        = modelParams.temperature;
+            if (modelParams.top_p !== undefined)              body.top_p              = modelParams.top_p;
+            if (modelParams.max_tokens !== undefined)         body.max_tokens         = modelParams.max_tokens;
+            if (modelParams.frequency_penalty !== undefined)  body.frequency_penalty  = modelParams.frequency_penalty;
+            if (modelParams.presence_penalty !== undefined)   body.presence_penalty   = modelParams.presence_penalty;
+        }
         const response = await fetch(baseUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-            body: JSON.stringify({ model: modelId, messages, stream: true }),
+            body: JSON.stringify(body),
             signal
         });
         if (!response.ok) { const err = await response.text(); throw new Error('API error ' + response.status + ': ' + err); }
