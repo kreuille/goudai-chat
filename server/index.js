@@ -47,7 +47,7 @@ app.use('/api/conversations', apiLimiter,  require('./routes/conversations'));
 app.use('/api/userdata',       apiLimiter,  require('./routes/userdata'));
 
 // ── Health check ──────────────────────────────────────────────────
-app.get('/health', (_, res) => res.json({ ok: true, version: '1.0.0' }));
+app.get('/health', (_, res) => res.json({ ok: true, version: '2.0.0' }));
 
 // ── Servir le frontend (production) ──────────────────────────────
 // En production nginx sert le frontend directement ; cette route
