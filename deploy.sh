@@ -1,18 +1,34 @@
 #!/usr/bin/env bash
 # =====================================================================
 #  GoudAI Chat — Déploiement sur le VPS
-#  Lance depuis /root/goudai-chat sur le VPS :
-#     ./deploy.sh           # déploie la branche main
-#     ./deploy.sh dev       # déploie une autre branche (debug seulement)
+#
+#  Le script se base sur SON propre dossier (chaque clone gère sa branche
+#  + son container). Permet d'avoir simultanément :
+#     /root/goudai-chat       → branche main, container goudai-app    :3001
+#     /root/goudai-chat-dev   → branche dev,  container goudai-app-dev:3002
+#
+#  Usage :
+#     ./deploy.sh           # déploie la branche actuellement checkout
+#     ./deploy.sh main      # force la branche
+#     ./deploy.sh dev       # idem
 # =====================================================================
 set -euo pipefail
 
-BRANCH="${1:-main}"
-PROJECT_DIR="/root/goudai-chat"
-
+# Le dossier du script (chaque clone a son propre deploy.sh)
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$PROJECT_DIR"
 
-echo "▶ [$(date '+%H:%M:%S')] Déploiement branche '$BRANCH'…"
+# Branche cible : argument > branche actuellement checkout > main par défaut
+DEFAULT_BRANCH="$(git symbolic-ref --short HEAD 2>/dev/null || echo main)"
+BRANCH="${1:-$DEFAULT_BRANCH}"
+
+# Étiquette d'environnement déduite du nom du dossier
+ENV_LABEL="prod"
+if [[ "$(basename "$PROJECT_DIR")" == *-dev ]]; then
+  ENV_LABEL="dev"
+fi
+
+echo "▶ [$(date '+%H:%M:%S')] Déploiement [$ENV_LABEL] branche '$BRANCH' (dans $PROJECT_DIR)"
 
 # 1. Sécurité : refuser de déployer si .env manquant
 if [[ ! -f .env ]]; then
@@ -48,4 +64,4 @@ docker compose up -d
 echo "▶ docker compose ps"
 docker compose ps
 
-echo "✅ [$(date '+%H:%M:%S')] Déploiement terminé."
+echo "✅ [$(date '+%H:%M:%S')] Déploiement [$ENV_LABEL] terminé."

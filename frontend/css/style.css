@@ -989,23 +989,941 @@ html, body {
     }
 }
 
-/* Bouton fermer sidebar mobile */
+/* ─────────── Composer toolbar (Kiro v3 - PR9) ─────────── */
+/* Ligne d'actions visibles juste sous le composer (#input-wrapper).
+   Affiche 1 a 2 boutons selon updatePromptToolbar() :
+   - mode insert  : bouton "Inserer un prompt" (textarea vide)
+   - mode enhance : "Ameliorer" + "Enregistrer" (texte present, pre-enhance)
+   - mode revert  : "Revenir" (variante destructive) + "Enregistrer" (post-enhance) */
+.composer-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 6px 0 4px;
+    min-height: 30px;
+    flex-wrap: wrap;
+}
+.prompt-toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: 1px solid var(--border, #2a2a2a);
+    color: var(--text-secondary, #a0a0a0);
+    cursor: pointer;
+    padding: 5px 12px;
+    border-radius: 16px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+    line-height: 1.2;
+}
+.prompt-toolbar-btn svg {
+    stroke: currentColor;
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+.prompt-toolbar-btn:hover:not(:disabled) {
+    color: var(--accent, #c4881e);
+    border-color: var(--accent, #c4881e);
+    background: rgba(196, 136, 30, 0.08);
+}
+.prompt-toolbar-btn:hover:not(:disabled) svg {
+    opacity: 1;
+}
+.prompt-toolbar-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.prompt-toolbar-btn.revert {
+    color: #f87171;
+    border-color: #f87171;
+}
+.prompt-toolbar-btn.revert:hover:not(:disabled) {
+    background: rgba(248, 113, 113, 0.08);
+}
+
+/* Animation shimmer sur le textarea pendant l'amelioration en cours */
+.prompt-input.enhancing {
+    background: linear-gradient(90deg,
+        var(--bg-input, #1a1a1a) 0%,
+        rgba(196, 136, 30, 0.15) 50%,
+        var(--bg-input, #1a1a1a) 100%);
+    background-size: 200% 100%;
+    animation: enhanceShimmer 1.6s linear infinite;
+}
+@keyframes enhanceShimmer {
+    0%   { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
+}
+
+/* ─────────── Right panel (Kiro v3 - PR3) ─────────── */
+/* 3e colonne du body flex (apres .sidebar et .main).
+   Contient les onglets de reglages (General, Image, etc.).
+   Contenu rempli en PR4/PR5. */
+.right-panel {
+    width: 280px;
+    min-width: 280px;
+    background: var(--bg-sidebar, #131210);
+    display: flex;
+    flex-direction: column;
+    padding: 16px 14px;
+    border-left: 1px solid var(--border, #2a2a2a);
+    transition: width 0.25s ease, min-width 0.25s ease, padding 0.2s ease, opacity 0.2s ease;
+    overflow: hidden;
+    height: 100vh;
+    height: 100dvh;
+    box-sizing: border-box;
+}
+.right-panel.collapsed {
+    width: 0;
+    min-width: 0;
+    padding: 16px 0;
+    opacity: 0;
+    border-left: none;
+}
+.rp-panel-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary, #a0a0a0);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 12px;
+    padding: 0 4px;
+}
+.rp-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--border, #2a2a2a);
+    position: relative;
+}
+.rp-tabs::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: var(--rp-tab-x, 0);
+    width: var(--rp-tab-w, 0);
+    height: 2px;
+    background: var(--accent, #c4881e);
+    transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1), width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.rp-tab {
+    flex: 1;
+    padding: 8px 0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary, #a0a0a0);
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.rp-tab.active {
+    color: var(--accent, #c4881e);
+}
+.rp-tab:hover:not(.active) {
+    color: var(--text, #e9e9e9);
+}
+.rp-tab-content {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 2px;
+}
+.rp-tab-content.active {
+    display: flex;
+    animation: rp-tab-fade-in 0.22s ease;
+}
+@keyframes rp-tab-fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.rp-placeholder {
+    color: var(--text-secondary, #a0a0a0);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    text-align: center;
+    margin: 24px 8px;
+    padding: 16px;
+    border: 1px dashed var(--border, #2a2a2a);
+    border-radius: 8px;
+}
+
+/* ─────────── Right panel — onglet Général (Kiro v3 - PR4) ─────────── */
+/* Sections de parametres LLM (temperature, top-p, max_tokens...) avec toggle
+   d'activation. Section.rp-param-disabled : opacity reduite + non interactive. */
+.right-panel-section {
+    border: 1px solid var(--border, #2a2a2a);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin: 8px 0;
+    background: var(--bg-card, rgba(255, 255, 255, 0.02));
+    transition: opacity 0.2s;
+}
+.right-panel-section.rp-param-disabled {
+    opacity: 0.45;
+}
+.right-panel-section.rp-param-disabled .rp-range,
+.right-panel-section.rp-param-disabled .rp-effort-select {
+    pointer-events: none;
+    filter: grayscale(0.4);
+}
+.right-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.rp-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+.right-panel-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text, #e9e9e9);
+}
+.rp-param-toggle {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--border, #2a2a2a);
+    border-radius: 3px;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s;
+}
+.rp-param-toggle:checked {
+    background: var(--accent, #c4881e);
+    border-color: var(--accent, #c4881e);
+}
+.rp-param-toggle:checked::after {
+    content: '';
+    position: absolute;
+    left: 3.5px;
+    top: 0px;
+    width: 4px;
+    height: 8px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+.rp-range-value {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--accent, #c4881e);
+    font-variant-numeric: tabular-nums;
+    min-width: 40px;
+    text-align: right;
+}
+.rp-range {
+    width: 100%;
+    height: 4px;
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--border, #2a2a2a);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+.rp-range::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent, #c4881e);
+    cursor: pointer;
+    border: 2px solid var(--bg-card, #1e1e1e);
+    transition: transform 0.1s;
+}
+.rp-range::-webkit-slider-thumb:hover { transform: scale(1.15); }
+.rp-range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent, #c4881e);
+    cursor: pointer;
+    border: 2px solid var(--bg-card, #1e1e1e);
+}
+.rp-effort-select {
+    width: 100%;
+    background: var(--bg-input, #1a1a1a);
+    color: var(--text, #e9e9e9);
+    border: 1px solid var(--border, #2a2a2a);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+.rp-reset-btn {
+    margin-top: 12px;
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--border, #2a2a2a);
+    color: var(--text-secondary, #a0a0a0);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+.rp-reset-btn:hover {
+    color: var(--accent, #c4881e);
+    border-color: var(--accent, #c4881e);
+}
+
+/* ─────────── Right panel — onglet Image (Kiro v3 - PR5) ─────────── */
+/* Format buttons (square / portrait / landscape) */
+.image-format-options {
+    display: flex;
+    gap: 6px;
+    width: 100%;
+}
+.image-format-btn {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border, #2a2a2a);
+    border-radius: 6px;
+    padding: 8px 0;
+    color: var(--text-secondary, #a0a0a0);
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.image-format-btn:hover {
+    color: var(--text, #e9e9e9);
+    border-color: var(--text-secondary, #a0a0a0);
+}
+.image-format-btn.active {
+    color: var(--accent, #c4881e);
+    border-color: var(--accent, #c4881e);
+    background: rgba(196, 136, 30, 0.1);
+}
+
+/* Sections data-providers : visibles uniquement pour le provider du modele image actif */
+[data-providers].rp-section-disabled {
+    display: none !important;
+}
+
+/* ─────────── Categories v2 - color grid 22 couleurs (Kiro v3 - PR6) ─────────── */
+.cat-color-grid {
+    display: grid;
+    grid-template-columns: repeat(11, 1fr);
+    gap: 6px;
+    margin: 6px 0 12px;
+}
+.cat-color-swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.12s, border-color 0.12s;
+    padding: 0;
+    background: transparent;
+}
+.cat-color-swatch:hover {
+    transform: scale(1.1);
+}
+.cat-color-swatch.selected {
+    border-color: var(--text, #e9e9e9);
+    box-shadow: 0 0 0 2px var(--bg, #131210), 0 0 0 4px var(--text, #e9e9e9);
+}
+.cat-color-swatch.selected::after {
+    content: '\2713';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+@media (max-width: 480px) {
+    .cat-color-grid { grid-template-columns: repeat(8, 1fr); }
+}
+
+/* ─────────── Modale FAQ (Kiro v3 - PR8) ─────────── */
+.faq-modal {
+    max-width: 720px;
+    width: 92vw;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+.faq-tabs {
+    display: flex;
+    gap: 4px;
+    margin: 12px 0 14px;
+    border-bottom: 1px solid var(--border, #2a2a2a);
+}
+.faq-tab {
+    background: none;
+    border: none;
+    color: var(--text-secondary, #a0a0a0);
+    padding: 8px 14px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+}
+.faq-tab:hover {
+    color: var(--text, #e9e9e9);
+}
+.faq-tab.active {
+    color: var(--accent, #c4881e);
+    border-bottom-color: var(--accent, #c4881e);
+}
+.faq-container {
+    overflow-y: auto;
+    flex: 1;
+    padding-right: 6px;
+}
+.faq-item {
+    border: 1px solid var(--border, #2a2a2a);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.02);
+}
+.faq-question {
+    background: none;
+    border: none;
+    color: var(--text, #e9e9e9);
+    font-size: 0.88rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    padding: 12px 14px;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    transition: background 0.12s;
+}
+.faq-question:hover {
+    background: rgba(196, 136, 30, 0.06);
+}
+.faq-question::after {
+    content: '+';
+    color: var(--accent, #c4881e);
+    font-size: 1.4rem;
+    font-weight: 300;
+    line-height: 1;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+}
+.faq-item.open .faq-question::after {
+    content: '\2212'; /* minus */
+}
+.faq-answer {
+    display: none;
+    padding: 4px 16px 14px;
+    color: var(--text-secondary, #a0a0a0);
+    font-size: 0.85rem;
+    line-height: 1.55;
+}
+.faq-item.open .faq-answer {
+    display: block;
+}
+.faq-answer strong { color: var(--text, #e9e9e9); }
+.faq-answer code {
+    background: var(--bg-input, #1a1a1a);
+    color: var(--accent, #c4881e);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.8em;
+}
+
+/* ─────────── Modale Configuration v2 - 7 onglets (Kiro v3 - PR7) ─────────── */
+.config-modal {
+    max-width: 720px;
+    width: 92vw;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+.config-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    margin: 12px 0 14px;
+    border-bottom: 1px solid var(--border, #2a2a2a);
+    padding-bottom: 0;
+}
+.config-tab {
+    background: none;
+    border: none;
+    color: var(--text-secondary, #a0a0a0);
+    padding: 8px 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+.config-tab:hover {
+    color: var(--text, #e9e9e9);
+}
+.config-tab.active {
+    color: var(--accent, #c4881e);
+    border-bottom-color: var(--accent, #c4881e);
+}
+.config-tab-panel {
+    display: none;
+    overflow-y: auto;
+    flex: 1;
+    padding-right: 4px;
+    animation: configPanelFade 0.18s ease;
+}
+.config-tab-panel.active {
+    display: block;
+}
+@keyframes configPanelFade {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Theme radios (onglet Apparence) */
+.theme-choice-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 10px 0;
+}
+.theme-choice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border: 1px solid var(--border, #2a2a2a);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+.theme-choice:hover {
+    border-color: var(--accent, #c4881e);
+    background: rgba(196, 136, 30, 0.04);
+}
+.theme-choice input[type="radio"] {
+    accent-color: var(--accent, #c4881e);
+    width: 16px;
+    height: 16px;
+}
+.theme-choice input[type="radio"]:checked ~ span {
+    color: var(--accent, #c4881e);
+    font-weight: 600;
+}
+
+@media (max-width: 600px) {
+    .config-tabs { font-size: 0.72rem; }
+    .config-tab { padding: 7px 8px; font-size: 0.72rem; }
+}
+
+/* ─────────── User widget (sidebar bottom — refonte P1.4) ─────────── */
+/* Remplace les inline style="" + onmouseover/out de mountUserWidget()
+   dans auth.js. BEM strict (.user-widget, .user-widget__xxx). */
+.user-widget {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 8px 8px;
+    border-top: 1px solid var(--border, #2a2a2a);
+    margin-bottom: 4px;
+}
+.user-widget__avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 1px solid var(--border, #2a2a2a);
+    object-fit: cover;
+}
+.user-widget__avatar--initial {
+    background: var(--accent-soft, rgba(196, 136, 30, 0.1));
+    border-color: var(--accent-glow, rgba(196, 136, 30, 0.4));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--accent, #c4881e);
+}
+.user-widget__info {
+    min-width: 0;
+    flex: 1;
+}
+.user-widget__name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text, #e9e9e9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.user-widget__email {
+    font-size: 0.65rem;
+    color: var(--text-muted, var(--text-secondary, #a0a0a0));
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.user-widget__logout {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    color: var(--text-muted, var(--text-secondary, #a0a0a0));
+    border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.user-widget__logout:hover {
+    color: var(--accent, #c4881e);
+    background: var(--accent-soft, rgba(196, 136, 30, 0.1));
+}
+
+/* ────────────────── Page de connexion (index.html) — Refonte P1.5 ────────────────── */
+/* Tout le CSS deplace depuis le bloc <style> inline d'index.html (~243 lignes).
+   Tous les selecteurs sont prefixes .login-page pour eviter les collisions
+   avec app.html qui partage ce stylesheet. Les variables CSS sont
+   re-declarees en scope .login-page (override pour cette seule page). */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap');
+
+body.login-page {
+    --bg:           #080709;
+    --surface:      #0f0e13;
+    --surface-2:    #141218;
+    --border:       #201d28;
+    --border-input: #2c2836;
+    --text:         #ece7e0;
+    --text-sec:     #7c7180;
+    --text-muted:   #3e3848;
+    --accent:       #c4881e;
+    --accent-b:     #dfa040;
+    --accent-soft:  rgba(196,136,30,.12);
+    --accent-glow:  rgba(196,136,30,.22);
+    --error:        #f87171;
+    --error-bg:     rgba(248,113,113,.1);
+
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+}
+body.login-page *, body.login-page *::before, body.login-page *::after {
+    margin: 0; padding: 0; box-sizing: border-box;
+}
+body.login-page::before {
+    content: '';
+    position: fixed;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(196,136,30,.06) 0%, transparent 70%);
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+body.login-page::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+    pointer-events: none;
+    opacity: .4;
+    z-index: 0;
+}
+
+.login-page .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 420px;
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 32px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.03);
+}
+.login-page .card::before {
+    content: '';
+    position: absolute; top: 0; left: 20%; right: 20%; height: 1.5px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    border-radius: 99px;
+    opacity: .7;
+}
+.login-page .logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.4rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    color: var(--text);
+    text-align: center;
+    margin-bottom: 4px;
+    line-height: 1;
+}
+.login-page .logo span { color: var(--accent); }
+.login-page .tagline {
+    text-align: center;
+    font-size: .75rem;
+    color: var(--text-muted);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 32px;
+}
+.login-page .tabs {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+.login-page .tab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    padding: 9px;
+    font-family: 'Outfit', sans-serif;
+    font-size: .8rem;
+    font-weight: 500;
+    letter-spacing: .04em;
+    cursor: pointer;
+    color: var(--text-sec);
+    transition: background .15s, color .15s;
+}
+.login-page .tab-btn.active {
+    background: var(--accent-soft);
+    color: var(--accent-b);
+}
+.login-page .form { display: flex; flex-direction: column; gap: 14px; }
+.login-page .form.hidden { display: none; }
+.login-page label {
+    font-size: .68rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    display: block;
+    margin-bottom: 5px;
+}
+.login-page input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border-input);
+    border-radius: 10px;
+    padding: 10px 13px;
+    font-family: 'Outfit', sans-serif;
+    font-size: .9rem;
+    color: var(--text);
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+}
+.login-page input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.login-page input::placeholder { color: var(--text-muted); }
+.login-page .submit-btn {
+    background: var(--accent);
+    color: #08070a;
+    border: none;
+    border-radius: 11px;
+    padding: 11px;
+    font-family: 'Outfit', sans-serif;
+    font-size: .88rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s, box-shadow .15s;
+    margin-top: 4px;
+}
+.login-page .submit-btn:hover:not(:disabled) {
+    opacity: .88;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px var(--accent-glow);
+}
+.login-page .submit-btn:disabled { opacity: .35; cursor: not-allowed; }
+.login-page .divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 4px 0;
+    font-size: .72rem;
+    color: var(--text-muted);
+    letter-spacing: .06em;
+}
+.login-page .divider::before, .login-page .divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+}
+.login-page .google-btn {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    padding: 10px 14px;
+    font-family: 'Outfit', sans-serif;
+    font-size: .86rem;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-decoration: none;
+}
+.login-page .google-btn:hover { background: #1c1a22; border-color: #3a364a; }
+.login-page .google-btn svg { flex-shrink: 0; }
+.login-page .alert {
+    padding: 10px 13px;
+    border-radius: 9px;
+    font-size: .82rem;
+    display: none;
+}
+.login-page .alert.error {
+    background: var(--error-bg);
+    color: var(--error);
+    border: 1px solid rgba(248,113,113,.2);
+    display: block;
+}
+.login-page .alert.success {
+    background: rgba(74,222,128,.1);
+    color: #4ade80;
+    border: 1px solid rgba(74,222,128,.2);
+    display: block;
+}
+.login-page .spin {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(8,7,10,.3);
+    border-top-color: #08070a;
+    border-radius: 50%;
+    animation: loginSpin .7s linear infinite;
+    vertical-align: middle;
+}
+@keyframes loginSpin { to { transform: rotate(360deg); } }
+.login-page .url-error {
+    background: var(--error-bg);
+    color: var(--error);
+    border: 1px solid rgba(248,113,113,.2);
+    border-radius: 9px;
+    padding: 10px 13px;
+    font-size: .82rem;
+    margin-bottom: 16px;
+    display: none;
+}
+@media (max-width: 480px) {
+    .login-page .card { padding: 28px 20px; border-radius: 16px; }
+    .login-page .logo { font-size: 2rem; }
+}
+
+/* Refonte P4.4 : anti-zoom iOS sur les inputs des modales (Config, FAQ, etc.).
+   Sans cela, taper dans une input <16px declenche un zoom auto Safari. */
 @media (max-width: 768px) {
-    #sidebar-close-btn {
-        display: block !important;
+    .sp-modal-input,
+    .apikey-input,
+    .login-page input {
+        font-size: 16px !important;
     }
 }
 
-/* Bouton fermer sidebar mobile */
-@media (max-width: 768px) {
-    #sidebar-close-btn {
-        display: block !important;
-    }
+/* Fix spacing modale Config v2 (PR7) — onglet Cles API.
+   Sans cela, le <label OPENAI> apparaissait colle au <a>Obtenir une cle --></a>
+   precedent (les deux sont inline par defaut dans la modale). */
+.config-tab-panel .sp-modal-label {
+    display: block;
+    margin-top: 14px;
+    margin-bottom: 4px;
+}
+.config-tab-panel .sp-modal-label:first-child {
+    margin-top: 0;
+}
+.config-tab-panel .apikey-link {
+    display: block;
+    margin-top: 6px;
 }
 
-/* Bouton fermer sidebar mobile */
+/* Bouton toggle du right panel - fixed top-right (symetrique du #sidebar-toggle a gauche) */
+.right-panel-toggle {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 100;
+    width: 36px;
+    height: 36px;
+    padding: 6px;
+    background: var(--bg-card, #1e1e1e);
+    border: 1px solid var(--border, #2a2a2a);
+    border-radius: 8px;
+    color: var(--text-secondary, #a0a0a0);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, border-color 0.15s, background 0.15s, right 0.25s ease;
+}
+.right-panel-toggle:hover {
+    color: var(--accent, #c4881e);
+    border-color: var(--accent-glow, var(--accent, #c4881e));
+    background: var(--accent-soft, rgba(196, 136, 30, 0.08));
+}
+.right-panel-toggle.collapsed {
+    /* Quand le panel est ferme, le bouton reste a droite (le panel a width:0). */
+    right: 14px;
+}
+
+/* Mobile : right panel devient overlay full-height (pas full-width pour rester fonctionnel) */
 @media (max-width: 768px) {
-    #sidebar-close-btn {
-        display: block !important;
+    .right-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        height: 100vh;
+        height: 100dvh;
+        z-index: 90;
+        box-shadow: -8px 0 24px rgba(0, 0, 0, 0.4);
+    }
+    .right-panel.collapsed {
+        transform: translateX(100%);
+        opacity: 1;
+    }
+    .right-panel-toggle {
+        top: calc(8px + env(safe-area-inset-top, 0px));
+        right: 10px;
+        z-index: 150;
+        width: 38px;
+        height: 38px;
+        padding: 6px;
+        border-radius: 9px;
     }
 }

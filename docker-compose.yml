@@ -1,16 +1,26 @@
 version: '3.8'
 
+# =====================================================================
+#  Variables substituees depuis le fichier .env (meme dossier) :
+#    CONTAINER_NAME (def: goudai-app)         — nom du container
+#    HOST_PORT      (def: 3001)               — port hote expose
+#    NODE_ENV       (def: production)         — environnement Node
+#  Le port interne du container reste toujours 3001 (l'app ecoute la-dessus).
+#  → /root/goudai-chat       : defauts (prod, sur :3001)
+#  → /root/goudai-chat-dev   : .env force CONTAINER_NAME=goudai-app-dev + HOST_PORT=3002
+# =====================================================================
+
 services:
   goudai:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: goudai-app
+    container_name: ${CONTAINER_NAME:-goudai-app}
     restart: always
     ports:
-      - "3001:3001"
+      - "${HOST_PORT:-3001}:3001"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
       - PORT=3001
     env_file:
       - .env

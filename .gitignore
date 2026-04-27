@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!.env.dev.example
 *.env.local
 
 # Google service account & toute clé JSON sensible
@@ -48,3 +49,14 @@ coverage/
 
 # ── Docker ───────────────────────────────────────────────────────
 docker-compose.override.yml
+
+# ── Assets de dev / réintégration Kiro ──────────────────────────
+# Code de référence Kiro lu localement pour porter ses features.
+# Ne doit pas être embarqué dans l'image Docker ni pousser en prod.
+frontend/kiro_v*_reference/
+prompt-reintegration-kiro-features.md
+
+# ── Documentation (hors repo) ────────────────────────────────────
+*.docx
+*.doc
+*.pdf

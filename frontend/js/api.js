@@ -7,7 +7,9 @@ var API_KEYS = {
     perplexity: '',
     mistral: '',
     grok: '',
-    deepseek: ''
+    deepseek: '',
+    zai: '',         // Zhipu AI (GLM-5/5.1/4.7) — endpoint OpenAI-compatible
+    openrouter: ''   // OpenRouter (Flux 2 image models) — wiring image dans une PR ulterieure
 };
 
 // Modèles et tarifs — chargés depuis models.json par loadModels()
@@ -205,31 +207,121 @@ function formatMessagesForProvider(conversationHistory, editeur) {
     });
 }
 
+// --- Parser <think>...</think> (Kiro v3 - PR2) ---
+// Factory reutilisable : extrait les blocs <think>...</think> du flux streame
+// (DeepSeek R1, GLM-5/5.1, certains Mistral/Perplexity). Renvoie 2 fonctions :
+//   process(delta) -> { text, events: [{type:'thinking'|'chunk', data}] }
+//   flush()        -> events residuels (a appeler en fin de stream)
+// Note PR2 : la fonction est definie ici pour usage futur (PR de refactor des
+// parsers inline dans streamPerplexity/streamOpenAICompat). Pas de call-site
+// modifie dans cette PR pour eviter tout changement de comportement.
+function createThinkTagParser() {
+    let inThinkBlock = false;
+    let thinkBuffer = '';
+    function process(delta) {
+        const events = [];
+        let text = '';
+        thinkBuffer += delta;
+        while (thinkBuffer.length > 0) {
+            if (inThinkBlock) {
+                const endIdx = thinkBuffer.indexOf('</think>');
+                if (endIdx !== -1) {
+                    events.push({ type: 'thinking', data: thinkBuffer.substring(0, endIdx) });
+                    thinkBuffer = thinkBuffer.substring(endIdx + 8);
+                    inThinkBlock = false;
+                } else {
+                    if (thinkBuffer.length > 8) {
+                        events.push({ type: 'thinking', data: thinkBuffer.substring(0, thinkBuffer.length - 8) });
+                        thinkBuffer = thinkBuffer.substring(thinkBuffer.length - 8);
+                    }
+                    break;
+                }
+            } else {
+                const startIdx = thinkBuffer.indexOf('<think>');
+                if (startIdx !== -1) {
+                    if (startIdx > 0) text += thinkBuffer.substring(0, startIdx);
+                    thinkBuffer = thinkBuffer.substring(startIdx + 7);
+                    inThinkBlock = true;
+                } else {
+                    if (thinkBuffer.length > 7) {
+                        text += thinkBuffer.substring(0, thinkBuffer.length - 7);
+                        thinkBuffer = thinkBuffer.substring(thinkBuffer.length - 7);
+                    }
+                    break;
+                }
+            }
+        }
+        return { text, events };
+    }
+    function flush() {
+        const events = [];
+        if (thinkBuffer && !inThinkBlock) events.push({ type: 'chunk', data: thinkBuffer });
+        thinkBuffer = '';
+        return events;
+    }
+    return { process, flush };
+}
+
+// --- Reasoning effort utilities (Kiro v3 - PR2) ---
+// Identifie quels modeles supportent un parametre 'reasoning_effort' et donne
+// les niveaux disponibles. Utilises par PR4 (UI selecteur) et les PRs ulterieures
+// qui wireront effectivement le parametre dans les requetes API par provider.
+function supportsReasoningEffort(modelId) {
+    if (!modelId) return false;
+    // OpenAI : famille o1/o3/o4 + GPT-5
+    if (/^(o1|o3|o4|gpt-5)/.test(modelId)) return true;
+    // Anthropic : Claude Opus / Sonnet (adaptive thinking sur Opus 4.7+)
+    if (/^claude-(opus|sonnet)/.test(modelId)) return true;
+    // Google : Gemini Pro/Flash + Gemma 4
+    if (/^(gemini-(?:pro|.*-pro|.*-flash)|gemma-4)/.test(modelId)) return true;
+    // DeepSeek (toggle binaire : effort=high swap vers deepseek-reasoner)
+    if (/^deepseek-(chat|reasoner)/.test(modelId)) return true;
+    // Grok 4.20 reasoning (toggle binaire)
+    if (/^grok-4\.20.*reasoning/.test(modelId)) return true;
+    // GLM-5 / 5.1 (toggle binaire)
+    if (/^glm-5(\.|$)/.test(modelId)) return true;
+    return false;
+}
+function getEffortLevels(modelId) {
+    if (!supportsReasoningEffort(modelId)) return [];
+    // Toggle binaire (haut/bas) pour DeepSeek/Grok/GLM (pas de granularite intermediaire native)
+    if (/^(deepseek|grok|glm-5)/.test(modelId)) return ['low', 'high'];
+    // Anthropic, OpenAI, Google : niveaux pleins
+    return ['minimal', 'low', 'medium', 'high'];
+}
+
 // --- Dispatcher : appeler le bon provider selon le modèle ---
-function streamModel(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal) {
+// Signature etendue (Kiro v3 - PR2) : modelParams (optional) accepte les options
+// avancees comme reasoning_effort, temperature, top_p... Pour l'instant les
+// providers ne lisent pas encore modelParams (sera wired par PRs ulterieures).
+function streamModel(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal, modelParams) {
     const editeur = getModelEditeur(modelId) || getSearchModelEditeur(modelId);
     switch (editeur) {
         case 'openai':
-            return streamOpenAI(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal);
+            return streamOpenAI(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal, modelParams);
         case 'anthropic':
-            return streamAnthropic(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal);
+            return streamAnthropic(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal, modelParams);
         case 'google':
-            return streamGoogle(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal);
+            return streamGoogle(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal, modelParams);
         case 'perplexity':
-            return streamPerplexity(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal);
+            return streamPerplexity(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, modelParams);
         case 'mistral':
-            return streamOpenAICompat(modelId, 'https://api.mistral.ai/v1/chat/completions', API_KEYS.mistral, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal);
+            return streamOpenAICompat(modelId, 'https://api.mistral.ai/v1/chat/completions', API_KEYS.mistral, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, false, modelParams);
         case 'grok':
-            return streamOpenAICompat(modelId, 'https://api.x.ai/v1/chat/completions', API_KEYS.grok, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal);
+            return streamOpenAICompat(modelId, 'https://api.x.ai/v1/chat/completions', API_KEYS.grok, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, false, modelParams);
         case 'deepseek':
-            return streamOpenAICompat(modelId, 'https://api.deepseek.com/v1/chat/completions', API_KEYS.deepseek, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, true);
+            return streamOpenAICompat(modelId, 'https://api.deepseek.com/v1/chat/completions', API_KEYS.deepseek, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, true, modelParams);
+        case 'zai':
+            // Zhipu AI (GLM family). Compatible OpenAI Chat Completions.
+            // hasThinkTags=true: les modeles GLM-5/5.1 emettent <think>...</think> en mode raisonnement.
+            return streamOpenAICompat(modelId, 'https://api.z.ai/api/paas/v4/chat/completions', API_KEYS.zai, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, true, modelParams);
         default:
             onError(new Error(`Éditeur inconnu pour le modèle ${modelId}`));
     }
 }
 
 // ===================== OpenAI (API Responses) =====================
-async function streamOpenAI(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal) {
+async function streamOpenAI(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal, modelParams) {
     try {
         const input = formatMessagesForProvider(conversationHistory, 'openai');
 
@@ -241,10 +333,20 @@ async function streamOpenAI(modelId, conversationHistory, onChunk, onDone, onErr
         if (systemPrompt) body.instructions = systemPrompt;
         if (webSearch) body.tools = [{ type: 'web_search_preview' }];
         // Activer le raisonnement : o-series et GPT-5.x
+        // PR4 Kiro v3 : modelParams.reasoning_effort surcharge le defaut 'medium' si fourni.
+        const requestedEffort = modelParams && modelParams.reasoning_effort;
         if (modelId.startsWith('o3') || modelId.startsWith('o4') || modelId.startsWith('o1')) {
-            body.reasoning = { summary: 'auto' };
+            body.reasoning = requestedEffort
+                ? { effort: requestedEffort, summary: 'auto' }
+                : { summary: 'auto' };
         } else if (modelId.startsWith('gpt-5')) {
-            body.reasoning = { effort: 'medium', summary: 'auto' };
+            body.reasoning = { effort: requestedEffort || 'medium', summary: 'auto' };
+        }
+        // PR4 Kiro v3 : params LLM standards (Responses API utilise max_output_tokens)
+        if (modelParams) {
+            if (modelParams.temperature !== undefined) body.temperature = modelParams.temperature;
+            if (modelParams.top_p !== undefined)       body.top_p       = modelParams.top_p;
+            if (modelParams.max_tokens !== undefined)  body.max_output_tokens = modelParams.max_tokens;
         }
 
         const response = await fetch('https://api.openai.com/v1/responses', {
@@ -615,7 +717,7 @@ async function streamPerplexity(modelId, conversationHistory, onChunk, onDone, o
 
 
 // ── OpenAI-Compatible : Mistral / Grok / DeepSeek ────────────────
-async function streamOpenAICompat(modelId, baseUrl, apiKey, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, hasThinkTags = false) {
+async function streamOpenAICompat(modelId, baseUrl, apiKey, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, hasThinkTags = false, modelParams) {
     try {
         const messages = [];
         if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
@@ -625,10 +727,22 @@ async function streamOpenAICompat(modelId, baseUrl, apiKey, conversationHistory,
                 : Array.isArray(msg.content) ? msg.content.map(p => p.type === 'text' ? p.text : '').filter(Boolean).join('\n') : '';
             messages.push({ role: msg.role, content: text });
         }
+        // PR4 Kiro v3 : injecte les modelParams optionnels (temperature, top_p,
+        // max_tokens, frequency_penalty, presence_penalty) dans le body Chat
+        // Completions standard. Le reasoning_effort par swap de model
+        // (deepseek-chat -> deepseek-reasoner) sera gere dans une PR future.
+        const body = { model: modelId, messages, stream: true };
+        if (modelParams) {
+            if (modelParams.temperature !== undefined)        body.temperature        = modelParams.temperature;
+            if (modelParams.top_p !== undefined)              body.top_p              = modelParams.top_p;
+            if (modelParams.max_tokens !== undefined)         body.max_tokens         = modelParams.max_tokens;
+            if (modelParams.frequency_penalty !== undefined)  body.frequency_penalty  = modelParams.frequency_penalty;
+            if (modelParams.presence_penalty !== undefined)   body.presence_penalty   = modelParams.presence_penalty;
+        }
         const response = await fetch(baseUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-            body: JSON.stringify({ model: modelId, messages, stream: true }),
+            body: JSON.stringify(body),
             signal
         });
         if (!response.ok) { const err = await response.text(); throw new Error('API error ' + response.status + ': ' + err); }
@@ -680,15 +794,90 @@ async function streamOpenAICompat(modelId, baseUrl, apiKey, conversationHistory,
 }
 // ===================== Génération d'images =====================
 
-function generateImage(modelId, prompt, onDone, onError, referenceImages, signal, format) {
+// PR5 Kiro v3 : signature etendue avec imageParams (BC : optional, ignore si non lu).
+function generateImage(modelId, prompt, onDone, onError, referenceImages, signal, format, imageParams) {
     const editeur = getImageModelEditeur(modelId);
     switch (editeur) {
         case 'openai':
-            return generateImageOpenAI(modelId, prompt, onDone, onError, referenceImages, signal, format);
+            return generateImageOpenAI(modelId, prompt, onDone, onError, referenceImages, signal, format, imageParams);
         case 'google':
-            return generateImageGemini(modelId, prompt, onDone, onError, referenceImages, signal, format);
+            return generateImageGemini(modelId, prompt, onDone, onError, referenceImages, signal, format, imageParams);
+        case 'openrouter':
+            return generateImageOpenRouter(modelId, prompt, onDone, onError, referenceImages, signal, format, imageParams);
         default:
             onError(new Error(`Éditeur inconnu pour le modèle image ${modelId}`));
+    }
+}
+
+// ===================== OpenRouter Image (Flux 2) (Kiro v3 - PR5) =====================
+// Pass-through OpenRouter -> Black Forest Labs. API compatible Chat Completions
+// avec modalities=['image'] et image_config.aspect_ratio. Les params Flux specifiques
+// (num_steps, guidance) sont passes au top-level du body.
+async function generateImageOpenRouter(modelId, prompt, onDone, onError, referenceImages, signal, format, imageParams) {
+    try {
+        const aspectMap = { square: '1:1', vertical: '9:16', horizontal: '16:9' };
+        const aspectRatio = aspectMap[format || imageParams?.format] || '1:1';
+
+        const content = [];
+        if (referenceImages && referenceImages.length > 0) {
+            for (const img of referenceImages) {
+                content.push({
+                    type: 'image_url',
+                    image_url: { url: `data:${img.mimeType || 'image/png'};base64,${img.data}` }
+                });
+            }
+        }
+        content.push({ type: 'text', text: prompt });
+
+        const body = {
+            model: modelId,
+            messages: [{ role: 'user', content }],
+            modalities: ['image'],
+            stream: false,
+            image_config: { aspect_ratio: aspectRatio }
+        };
+        if (imageParams?.steps !== undefined)    body.num_steps = imageParams.steps;
+        if (imageParams?.guidance !== undefined) body.guidance  = imageParams.guidance;
+
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + API_KEYS.openrouter
+            },
+            body: JSON.stringify(body),
+            signal
+        });
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error('OpenRouter Image API error ' + response.status + ': ' + errText);
+        }
+
+        const data = await response.json();
+        const result = { text: '', images: [], usage: null, imageCount: 0 };
+        const msg = data.choices?.[0]?.message;
+        if (msg) {
+            if (msg.content) result.text = msg.content;
+            const imgs = msg.images || [];
+            for (const img of imgs) {
+                const url = img.image_url?.url || img.url || '';
+                const match = /^data:([^;]+);base64,(.+)$/.exec(url);
+                if (match) {
+                    result.images.push({ b64: match[2], mimeType: match[1] });
+                    result.imageCount++;
+                }
+            }
+        }
+        if (data.usage) {
+            result.usage = {
+                input_tokens: data.usage.prompt_tokens || 0,
+                output_tokens: data.usage.completion_tokens || 0
+            };
+        }
+        onDone(result);
+    } catch (err) {
+        if (err.name === 'AbortError') { onDone({ text: '', images: [], usage: null, imageCount: 0 }); return; }
+        onError(err);
     }
 }
 
@@ -899,29 +1088,105 @@ async function ttsSpeak(text, onDone, onError) {
     } catch (err) { onError(err); }
 }
 
-// ===================== OpenAI Whisper (whisper-1) — $0.006/minute =====================
+// ===================== STT — multi-provider (Whisper / Voxtral) =====================
+// Provider choisi via AUDIO_SETTINGS.sttProvider (défaut: 'openai').
+// Modèles déclarés dans MODELS_DATA.stt (frontend/models.js).
 
 async function transcribeAudio(audioBlob, onDone, onError) {
+    const provider = (typeof AUDIO_SETTINGS !== 'undefined' && AUDIO_SETTINGS.sttProvider) || 'openai';
+
+    if (!API_KEYS[provider]) {
+        return onError(new Error(`Clé API ${provider} manquante — configurez-la dans les réglages.`));
+    }
+
+    const sttModel = MODELS_DATA.stt.find(m => m.editeur === provider);
+    if (!sttModel) {
+        return onError(new Error(`Aucun modèle STT déclaré pour ${provider} dans models.js.`));
+    }
+
+    const ENDPOINTS = {
+        openai:  'https://api.openai.com/v1/audio/transcriptions',
+        mistral: 'https://api.mistral.ai/v1/audio/transcriptions'
+    };
+    const endpoint = ENDPOINTS[provider];
+    if (!endpoint) {
+        return onError(new Error(`Provider STT non supporté : ${provider}.`));
+    }
+
     try {
         const formData = new FormData();
         formData.append('file', audioBlob, 'audio.webm');
-        formData.append('model', 'whisper-1');
+        formData.append('model', sttModel.id);
         formData.append('language', 'fr');
 
-        const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        const response = await fetch(endpoint, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${API_KEYS.openai}`
-            },
+            headers: { 'Authorization': `Bearer ${API_KEYS[provider]}` },
             body: formData
         });
 
         if (!response.ok) {
-            const err = await response.text();
-            throw new Error(`Whisper API error ${response.status}: ${err}`);
+            const errBody = await response.text();
+            throw new Error(`STT ${provider} error ${response.status}: ${errBody}`);
         }
 
         const data = await response.json();
         onDone(data.text);
     } catch (err) { onError(err); }
+}
+
+// ===================== Amélioration de prompt (text + image) =====================
+// Utilisé par le bouton "Améliorer le prompt" du composer.
+// Stream de Kiro v3 : appelle streamModel() avec le modèle defini dans
+// AUDIO_SETTINGS.enhanceModel et un template d'instruction qui demande
+// au modèle de réécrire le prompt utilisateur.
+
+const ENHANCE_PROMPT_TEMPLATE = `Tu es un expert en prompt engineering. Voici un prompt écrit par un utilisateur pour une IA conversationnelle :
+
+---
+{TEXT}
+---
+
+Améliore ce prompt pour obtenir un meilleur résultat de l'IA. Tu dois :
+- Conserver fidèlement l'intention et le sens du prompt original
+- Ne pas dénaturer ni changer le sujet ou la demande
+- Compléter, reformuler, structurer et préciser le prompt
+- Ajouter du contexte utile si nécessaire
+- Rendre les instructions plus claires et sans ambiguïté
+
+Réponds UNIQUEMENT avec le prompt amélioré. Pas d'introduction, pas de conclusion, pas de commentaire, pas de texte avant ou après. Ne commence pas par "Voici" ou toute autre phrase d'accroche. Retourne directement le contenu du prompt optimisé, rien d'autre.`;
+
+const ENHANCE_IMAGE_PROMPT_TEMPLATE = `Tu es un expert en génération d'images par IA. Voici un prompt de génération d'image brut :
+
+---
+{TEXT}
+---
+
+Améliore ce prompt pour obtenir une meilleure image générée par IA. Tu dois :
+- Conserver fidèlement l'intention et le sujet de l'image demandée
+- Ajouter des détails visuels précis (éclairage, angle, style, couleurs, composition, ambiance)
+- Préciser le style artistique si pertinent (photoréaliste, illustration, peinture, 3D, etc.)
+- Structurer le prompt de manière optimale pour un modèle de génération d'image
+- Rester en anglais pour une meilleure compatibilité avec les modèles d'image
+- Ne jamais citer de personnages, œuvres, marques, logos ou noms protégés par le droit d'auteur ; reformuler en décrivant les caractéristiques visuelles à la place
+
+Réponds UNIQUEMENT avec le prompt amélioré. Pas d'introduction, pas de conclusion, pas de commentaire, pas de texte avant ou après. Ne commence pas par "Voici" ou toute autre phrase d'accroche. Retourne directement le contenu du prompt optimisé, rien d'autre.`;
+
+async function enhancePrompt(text, onDelta, onDone, onError, isImage = false) {
+    const template = isImage ? ENHANCE_IMAGE_PROMPT_TEMPLATE : ENHANCE_PROMPT_TEMPLATE;
+    const prompt = template.replace('{TEXT}', text);
+    const modelId = (typeof AUDIO_SETTINGS !== 'undefined' && AUDIO_SETTINGS.enhanceModel) || 'gpt-4.1-2025-04-14';
+
+    // Réutilise streamModel() existant (provider dispatch + streaming).
+    streamModel(
+        modelId,
+        [{ role: 'user', content: prompt }],
+        (chunk) => onDelta(chunk),                  // onChunk
+        (fullText, inputTokens, outputTokens) => onDone(fullText), // onDone
+        (err) => onError(err),                       // onError
+        null,                                        // systemPrompt
+        false,                                       // webSearch
+        null,                                        // onThinkingChunk (ignoré pour enhance)
+        null                                         // signal
+    );
 }

@@ -47,22 +47,63 @@ function fetchLocalModels() {
 })();
 
 
-// Audio settings
+// --- Audio settings (TTS / STT / modèles auxiliaires) ---
+// Source de vérité : preferences_enc serveur (clé `audioSettings`).
+// localStorage = cache local pour latence et fallback hors-ligne.
 const AUDIO_SETTINGS = {
     ttsProvider: 'openai',
     sttProvider: 'openai',
     ttsVoice: 'coral',
     summaryModel: 'gpt-4.1-2025-04-14',
-    roleOptimizeModel: 'claude-sonnet-4-5'
+    roleOptimizeModel: 'claude-sonnet-4-5-20250929'
 };
-function saveAudioSettings(settings) {
+
+async function loadAudioSettingsFromServer() {
+    try {
+        const res = await fetch(`${KIRO_API}/api/user/preferences`, { credentials: 'include' });
+        if (res.ok) {
+            const data = await res.json();
+            const audio = data?.preferences?.audioSettings;
+            if (audio && typeof audio === 'object') {
+                Object.assign(AUDIO_SETTINGS, audio);
+                localStorage.setItem('goudai-audio-settings', JSON.stringify(AUDIO_SETTINGS));
+                return;
+            }
+        }
+    } catch (err) {
+        console.warn('[audio-settings] sync from server failed:', err.message);
+    }
+    // Fallback : cache localStorage
+    try {
+        const cached = JSON.parse(localStorage.getItem('goudai-audio-settings') || '{}');
+        Object.assign(AUDIO_SETTINGS, cached);
+    } catch {}
+}
+
+async function saveAudioSettings(settings) {
     if (settings.ttsProvider) AUDIO_SETTINGS.ttsProvider = settings.ttsProvider;
     if (settings.sttProvider) AUDIO_SETTINGS.sttProvider = settings.sttProvider;
     if (settings.enhanceModel) AUDIO_SETTINGS.enhanceModel = settings.enhanceModel;
     if (settings.summaryModel) AUDIO_SETTINGS.summaryModel = settings.summaryModel;
     if (settings.roleOptimizeModel) AUDIO_SETTINGS.roleOptimizeModel = settings.roleOptimizeModel;
     localStorage.setItem('goudai-audio-settings', JSON.stringify(AUDIO_SETTINGS));
+    // Sync serveur (non-bloquant : on ignore l'échec, le cache local prend le relais)
+    try {
+        const getRes = await fetch(`${KIRO_API}/api/user/preferences`, { credentials: 'include' });
+        const current = getRes.ok ? ((await getRes.json()).preferences || {}) : {};
+        await fetch(`${KIRO_API}/api/user/preferences`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ ...current, audioSettings: { ...AUDIO_SETTINGS } })
+        });
+    } catch (err) {
+        console.warn('[audio-settings] sync to server failed:', err.message);
+    }
 }
+
+// Au démarrage : charger les réglages depuis le serveur (auth requise → silencieux si 401).
+loadAudioSettingsFromServer();
 
 function saveBudgetSettings() {
     // Budget non implementé dans GoudAI - stub
@@ -172,6 +213,12 @@ const micBtn = document.getElementById('mic-btn');
 const webSearchToggle = document.getElementById('web-search-toggle');
 const enhancePromptBtn = document.getElementById('enhance-prompt-btn');
 
+// Toolbar inline du composer (Kiro v3 - PR9)
+const composerToolbar  = document.getElementById('composer-toolbar');
+const toolbarInsertBtn = document.getElementById('toolbar-insert-btn');
+const toolbarEnhanceBtn = document.getElementById('toolbar-enhance-btn');
+const toolbarSaveBtn   = document.getElementById('toolbar-save-btn');
+
 const promptPickerBtn = document.getElementById('prompt-picker-btn');
 const promptPickerDropdown = document.getElementById('prompt-picker-dropdown');
 const prListEl = document.getElementById('pr-list');
@@ -231,6 +278,20 @@ let mediaRecorder = null;
 let micChunks = [];
 let micStartTime = null;
 let webSearchEnabled = false;
+
+// --- Web search constantes (Kiro v3 - PR10) ---
+// Editeurs qui supportent la recherche web nativement (tools/web_search côté API).
+const WEB_SEARCH_EDITEURS = ['openai', 'anthropic', 'google'];
+const WEB_SEARCH_TOOLTIPS = {
+    openai:    'Recherche web OpenAI · 0,01 $ / requête',
+    anthropic: 'Recherche web Anthropic · 0,01 $ / requête',
+    google:    'Recherche web Google (Gemini) · gratuit jusqu\u2019à 5000 req./jour'
+};
+// Coût fixe par requête (en USD).
+const WEB_SEARCH_COST_PER_REQ      = { openai: 0.01, anthropic: 0.01, google: 0 };
+// Coût additionnel par citation (Grok facture par source). Vide pour l'instant.
+const WEB_SEARCH_COST_PER_CITATION = {};
+
 let originalPromptBeforeEnhance = null;
 let isEnhancing = false;
 
@@ -244,19 +305,46 @@ marked.use({
     }
 });
 
-// --- Thème clair/sombre ---
-function applyTheme(dark) {
-    document.body.classList.toggle('dark', dark);
-    themeToggle.innerHTML = dark ? '&#9790; Thème sombre' : '&#9788; Thème clair';
+// --- Thème clair/sombre/auto (issue #14) ---
+// 3 valeurs persistees dans localStorage 'goudai-theme' :
+//   'dark'  -> body.dark (design KIRO Noir Aurique, defaut)
+//   'light' -> body sans .dark (override body:not(.dark) en CSS)
+//   'auto'  -> suit prefers-color-scheme du systeme
+// Cette fonction est la source de verite. Elle :
+//  - ajoute/retire body.dark selon le mode resolu
+//  - sync le bouton sidebar #theme-toggle (icone + libelle)
+//  - sync les radios de l'onglet Apparence (modale Config v2)
+function applyTheme(value) {
+    if (value !== 'dark' && value !== 'light' && value !== 'auto') value = 'dark';
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const effectiveDark = (value === 'dark') || (value === 'auto' && prefersDark);
+    document.body.classList.toggle('dark', effectiveDark);
+    // Retire les classes anti-FOUC injectees dans <head> -- desormais inutiles,
+    // le CSS body.dark / body:not(.dark) gere le rendu via les variables.
+    document.documentElement.classList.remove('preboot-dark', 'preboot-light');
+    if (themeToggle) {
+        // Bouton sidebar : libelle decrit l'action *contraire* (toggle vers l'autre mode)
+        themeToggle.innerHTML = effectiveDark ? '&#9788; Thème clair' : '&#9790; Thème sombre';
+    }
+    // Sync les radios de l'onglet Apparence (modale Config v2 - PR7)
+    const radio = document.querySelector('input[name="theme-choice"][value="' + value + '"]');
+    if (radio) radio.checked = true;
+    try { localStorage.setItem('goudai-theme', value); } catch {}
 }
 
-const savedTheme = localStorage.getItem('goudai-theme');
-applyTheme(savedTheme === 'dark');
+const savedTheme = localStorage.getItem('goudai-theme') || 'dark';
+applyTheme(savedTheme);
 
+// Bouton sidebar legacy : toggle binaire dark <-> light (skip 'auto')
 themeToggle.addEventListener('click', () => {
-    const isDark = document.body.classList.toggle('dark');
-    localStorage.setItem('goudai-theme', isDark ? 'dark' : 'light');
-    themeToggle.innerHTML = isDark ? '&#9790; Thème sombre' : '&#9788; Thème clair';
+    const current = localStorage.getItem('goudai-theme') || 'dark';
+    // Si 'auto' ou 'dark' -> bascule vers 'light' ; si 'light' -> 'dark'
+    applyTheme(current === 'light' ? 'dark' : 'light');
+});
+
+// Si l'utilisateur est en mode auto et change le theme OS, on suit
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if ((localStorage.getItem('goudai-theme') || 'dark') === 'auto') applyTheme('auto');
 });
 
 // --- Recherche de conversations ---
@@ -763,9 +851,44 @@ sidebarToggle.addEventListener('click', () => {
 // --- Toggle recherche web ---
 webSearchToggle.addEventListener('click', () => {
     webSearchEnabled = !webSearchEnabled;
-    webSearchToggle.classList.toggle('active', webSearchEnabled);
-    webSearchToggle.title = webSearchEnabled ? 'Recherche web activée' : 'Recherche web';
+    updateWebSearchBtn();
 });
+
+// --- Web search visibilité + coût (Kiro v3 - PR10) ---
+// updateWebSearchBtn() est appelée :
+//   - au boot (pour initialiser la visibilité)
+//   - à chaque changement de modèle (modelSelect change)
+//   - au toggle du bouton (sync visuel)
+function updateWebSearchBtn() {
+    if (!webSearchToggle) return;
+    const editeur = currentModel ? (typeof getModelEditeur === 'function' ? getModelEditeur(currentModel) : null) : null;
+    const supports = editeur && WEB_SEARCH_EDITEURS.includes(editeur);
+    if (supports) {
+        webSearchToggle.style.display = '';
+        webSearchToggle.classList.toggle('active', webSearchEnabled);
+        const tooltip = WEB_SEARCH_TOOLTIPS[editeur] || 'Recherche web';
+        webSearchToggle.title = webSearchEnabled ? `${tooltip} · activée` : tooltip;
+    } else {
+        webSearchToggle.style.display = 'none';
+        webSearchToggle.classList.remove('active');
+        webSearchEnabled = false;
+        webSearchToggle.title = 'Recherche web';
+    }
+}
+
+// Calcule le coût d'une recherche web selon le provider et le nombre de citations.
+// Renvoie 0 si la recherche web était désactivée OU si le provider n'est pas supporté.
+function calcWebSearchCost(modelId, citations) {
+    if (!webSearchEnabled) return 0;
+    const editeur = (typeof getModelEditeur === 'function') ? getModelEditeur(modelId) : null;
+    if (!editeur || !WEB_SEARCH_EDITEURS.includes(editeur)) return 0;
+    let cost = WEB_SEARCH_COST_PER_REQ[editeur] || 0;
+    const perCitation = WEB_SEARCH_COST_PER_CITATION[editeur];
+    if (perCitation && citations && citations.length) {
+        cost += citations.length * perCitation;
+    }
+    return cost;
+}
 
 // --- Amélioration du prompt ---
 const enhanceIconDefault = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8L19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2L19 5"/><path d="M11 6.2L9.7 5"/><path d="M11 11.8L9.7 13"/><path d="M2 21l9-9"/></svg>';
@@ -785,6 +908,8 @@ function updateEnhanceBtn() {
         enhancePromptBtn.classList.remove('revert');
         enhancePromptBtn.title = 'Améliorer le prompt';
     }
+    // Sync la toolbar inline (PR9 Kiro v3) — refletes le nouvel etat enhance
+    if (typeof updatePromptToolbar === 'function') updatePromptToolbar();
 }
 
 enhancePromptBtn.addEventListener('click', async () => {
@@ -811,6 +936,7 @@ enhancePromptBtn.addEventListener('click', async () => {
     updateEnhanceBtn();
     const savedText = text;
     promptInput.value = '';
+    promptInput.classList.add('enhancing');
 
     enhancePrompt(
         savedText,
@@ -820,6 +946,7 @@ enhancePromptBtn.addEventListener('click', async () => {
             promptInput.style.height = Math.min(promptInput.scrollHeight, 200) + 'px';
         },
         () => {
+            promptInput.classList.remove('enhancing');
             originalPromptBeforeEnhance = savedText;
             isEnhancing = false;
             updateEnhanceBtn();
@@ -828,6 +955,7 @@ enhancePromptBtn.addEventListener('click', async () => {
         },
         (err) => {
             console.error('Erreur amélioration prompt:', err);
+            promptInput.classList.remove('enhancing');
             promptInput.value = savedText;
             showModelAlert(err.message || 'Erreur lors de l\'amélioration du prompt.');
             isEnhancing = false;
@@ -837,6 +965,55 @@ enhancePromptBtn.addEventListener('click', async () => {
         }
     );
 });
+
+// --- Composer toolbar (Kiro v3 - PR9) ---
+// Machine d'etat 3 modes (insert / enhance / revert) qui controle quels
+// boutons toolbar sont visibles selon l'etat du textarea.
+function updatePromptToolbar() {
+    if (!composerToolbar) return;
+    const hasText = promptInput.value.trim() !== '';
+    const showInsert  = !hasText && originalPromptBeforeEnhance === null;
+    const showEnhance = hasText && originalPromptBeforeEnhance === null;
+    const showRevert  = originalPromptBeforeEnhance !== null;
+    const showSave    = hasText || showRevert;
+
+    toolbarInsertBtn.style.display  = showInsert  ? 'inline-flex' : 'none';
+    toolbarSaveBtn.style.display    = showSave    ? 'inline-flex' : 'none';
+
+    if (showRevert) {
+        toolbarEnhanceBtn.style.display = 'inline-flex';
+        toolbarEnhanceBtn.classList.add('revert');
+        toolbarEnhanceBtn.title = 'Revenir au prompt original';
+        toolbarEnhanceBtn.querySelector('.btn-label').textContent = 'Revenir au prompt original';
+    } else if (showEnhance) {
+        toolbarEnhanceBtn.style.display = 'inline-flex';
+        toolbarEnhanceBtn.classList.remove('revert');
+        toolbarEnhanceBtn.title = isEnhancing ? 'Amélioration en cours…' : 'Améliorer le prompt';
+        toolbarEnhanceBtn.querySelector('.btn-label').textContent = isEnhancing ? 'Amélioration…' : 'Améliorer le prompt';
+        toolbarEnhanceBtn.disabled = isEnhancing;
+    } else {
+        toolbarEnhanceBtn.style.display = 'none';
+    }
+}
+
+// Les boutons toolbar delegent aux handlers existants (UX coherente).
+toolbarInsertBtn.addEventListener('click', () => promptPickerBtn.click());
+toolbarEnhanceBtn.addEventListener('click', () => enhancePromptBtn.click());
+toolbarSaveBtn.addEventListener('click', () => {
+    const text = promptInput.value.trim();
+    if (!text) return;
+    // Ouvre la modale "Nouveau prompt" pre-remplie avec le texte courant.
+    prEditingFilename = null;
+    prModalTitle.textContent = 'Nouveau prompt';
+    prModalNom.value = '';
+    prModalContenu.value = text;
+    prModalOverlay.style.display = 'flex';
+    prModalNom.focus();
+});
+
+// Re-affiche la toolbar a chaque modification du textarea + au boot.
+promptInput.addEventListener('input', updatePromptToolbar);
+updatePromptToolbar();
 
 // --- Catégories ---
 
@@ -1014,6 +1191,42 @@ document.addEventListener('click', () => {
     document.querySelectorAll('.menu-open').forEach(b => b.classList.remove('menu-open'));
 });
 
+// --- Categories v2 - Color grid 22 couleurs (Kiro v3 - PR6) ---
+// Palette curee remplacant l'input HTML5 type=color (UX trop libre).
+const CAT_PRESET_COLORS = [
+    '#e53e3e', '#d97706', '#ca8a04', '#16a34a', '#0d9488',
+    '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7',
+    '#d946ef', '#ec4899', '#f43f5e', '#78716c', '#64748b',
+    '#059669', '#2563eb', '#7c3aed', '#c026d3', '#ea580c',
+    '#0891b2', '#b45309'
+];
+const _catColorGrid = document.getElementById('cat-color-grid');
+function populateCatColorGrid(selectedColor) {
+    if (!_catColorGrid) return;
+    _catColorGrid.innerHTML = '';
+    for (const color of CAT_PRESET_COLORS) {
+        const sw = document.createElement('button');
+        sw.type = 'button';
+        sw.className = 'cat-color-swatch';
+        sw.style.background = color;
+        sw.dataset.color = color;
+        sw.title = color;
+        if (color.toLowerCase() === (selectedColor || '').toLowerCase()) {
+            sw.classList.add('selected');
+        }
+        _catColorGrid.appendChild(sw);
+    }
+}
+if (_catColorGrid) {
+    _catColorGrid.addEventListener('click', (e) => {
+        const sw = e.target.closest('.cat-color-swatch');
+        if (!sw) return;
+        _catColorGrid.querySelectorAll('.cat-color-swatch').forEach(s => s.classList.remove('selected'));
+        sw.classList.add('selected');
+        catModalCouleur.value = sw.dataset.color; // input cache lu par le save handler
+    });
+}
+
 function openCatModal(catId) {
     editingCategoryId = catId;
     emojiPickerEl.style.display = 'none';
@@ -1025,6 +1238,7 @@ function openCatModal(catId) {
         catModalIcone.value = cat.icone;
         emojiPreview.textContent = cat.icone || '?';
         catModalCouleur.value = cat.couleur;
+        populateCatColorGrid(cat.couleur);
         catModalDelete.style.display = '';
     } else {
         catModalTitle.textContent = 'Nouvelle catégorie';
@@ -1032,6 +1246,7 @@ function openCatModal(catId) {
         catModalIcone.value = '';
         emojiPreview.textContent = '?';
         catModalCouleur.value = '#3b82f6';
+        populateCatColorGrid('#3b82f6');
         catModalDelete.style.display = 'none';
     }
     catModalOverlay.style.display = '';
@@ -1287,6 +1502,8 @@ initConfig().then(async () => {
     populateImageModelSelect();
     populateSearchModelSelect();
     updateTokenDisplay();
+    updateWebSearchBtn();
+    updateEffortSection(currentModel);
     refreshConvList();
     refreshCatBar();
     await importDefaultSystemPrompts();
@@ -1351,6 +1568,13 @@ modelSelect.addEventListener('change', () => {
         document.getElementById('image-format-select').style.display = 'none';
     }
     const newModel = currentModel || currentImageModel || currentSearchModel;
+    updateWebSearchBtn();
+    updateEffortSection(currentModel);
+    updateImageParamsVisibility(currentImageModel);
+    // Auto-switch right panel sur l'onglet Image quand on selectionne un modele image (Kiro v3 - PR5)
+    if (currentImageModel && typeof window.setRightPanelTab === 'function') {
+        window.setRightPanelTab('image');
+    }
     if (conversationStarted && prevModel && newModel && prevModel !== newModel) {
         addModelSwitch(prevModel, newModel);
     }
@@ -1379,6 +1603,13 @@ imageModelSelect.addEventListener('change', () => {
         imgFormatSelect.style.display = 'none';
     }
     const newModel = currentModel || currentImageModel || currentSearchModel;
+    updateWebSearchBtn();
+    updateEffortSection(currentModel);
+    updateImageParamsVisibility(currentImageModel);
+    // Auto-switch right panel sur l'onglet Image quand on selectionne un modele image (Kiro v3 - PR5)
+    if (currentImageModel && typeof window.setRightPanelTab === 'function') {
+        window.setRightPanelTab('image');
+    }
     if (conversationStarted && prevModel && newModel && prevModel !== newModel) {
         addModelSwitch(prevModel, newModel);
     }
@@ -1402,6 +1633,13 @@ searchModelSelect.addEventListener('change', () => {
         document.getElementById('image-format-select').style.display = 'none';
     }
     const newModel = currentModel || currentImageModel || currentSearchModel;
+    updateWebSearchBtn();
+    updateEffortSection(currentModel);
+    updateImageParamsVisibility(currentImageModel);
+    // Auto-switch right panel sur l'onglet Image quand on selectionne un modele image (Kiro v3 - PR5)
+    if (currentImageModel && typeof window.setRightPanelTab === 'function') {
+        window.setRightPanelTab('image');
+    }
     if (conversationStarted && prevModel && newModel && prevModel !== newModel) {
         addModelSwitch(prevModel, newModel);
     }
@@ -1601,7 +1839,19 @@ async function maybeGenerateTitle() {
 
     try {
         const prompt = `Donne un titre très court (3 à 6 mots max, en français) pour cette conversation. Réponds UNIQUEMENT avec le titre, sans guillemets ni ponctuation finale.\n\nUtilisateur : ${userMsg.substring(0, 300)}\n\nAssistant : ${assistantMsg.substring(0, 300)}`;
-        const title = (await streamText(modelId, prompt))?.trim();
+        // streamText() n'existe pas en GoudAI -> on wrap streamModel() en Promise
+        // (meme pattern que enhancePrompt corrige en PR9).
+        const title = (await new Promise((resolve, reject) => {
+            let full = '';
+            streamModel(
+                modelId,
+                [{ role: 'user', content: prompt }],
+                (chunk) => { full += chunk; },
+                () => resolve(full),
+                (err) => reject(err),
+                null, false, null, null
+            );
+        }))?.trim();
         if (title) {
             conversationTitle = title;
             saveConversation();
@@ -2148,7 +2398,8 @@ function regenerateLastResponse() {
             },
             regenRefImages,
             currentAbortController.signal,
-            document.getElementById('image-format-select').value
+            document.getElementById('image-format-select').value,
+            (typeof getImageParams === 'function') ? getImageParams() : undefined
         );
     } else {
         let fullResponse = '';
@@ -2190,6 +2441,12 @@ function regenerateLastResponse() {
                         segCost = (usage.input_tokens / 1_000_000) * segTarif.inputPer1M + (usage.output_tokens / 1_000_000) * segTarif.outputPer1M;
                         totalCost += segCost;
                     }
+                    // Coût recherche web (PR10) : tarif par requête + citations selon provider
+                    const wsCost = calcWebSearchCost(regenTextModel, citations);
+                    if (wsCost > 0) {
+                        totalCost += wsCost;
+                        segCost += wsCost;
+                    }
                     addCostForModel(regenTextModel, usage.input_tokens, usage.output_tokens, segCost);
                 }
                 updateTokenDisplay(); saveConversation(); addRegenBtn();
@@ -2223,7 +2480,8 @@ function regenerateLastResponse() {
                 if (thinkContent) thinkContent.innerHTML = marked.parse(fullThinking);
                 scrollToBottom();
             },
-            currentAbortController.signal
+            currentAbortController.signal,
+            (typeof getModelParams === 'function') ? getModelParams() : undefined
         );
     }
 }
@@ -2468,7 +2726,8 @@ function sendMessage() {
             },
             referenceImages,
             currentAbortController.signal,
-            document.getElementById('image-format-select').value
+            document.getElementById('image-format-select').value,
+            (typeof getImageParams === 'function') ? getImageParams() : undefined
         );
     } else {
         // --- Mode texte / recherche (streaming) ---
@@ -2530,6 +2789,12 @@ function sendMessage() {
                                 + (usage.output_tokens / 1_000_000) * segTarif.outputPer1M;
                         totalCost += segCost;
                     }
+                    // Coût recherche web (PR10) : tarif par requête + citations selon provider
+                    const wsCost = calcWebSearchCost(activeTextModel, citations);
+                    if (wsCost > 0) {
+                        totalCost += wsCost;
+                        segCost += wsCost;
+                    }
                     addCostForModel(activeTextModel, usage.input_tokens, usage.output_tokens, segCost);
                 }
                 updateTokenDisplay();
@@ -2579,7 +2844,8 @@ function sendMessage() {
                 if (thinkContent) thinkContent.innerHTML = marked.parse(fullThinking);
                 scrollToBottom();
             },
-            currentAbortController.signal
+            currentAbortController.signal,
+            (typeof getModelParams === 'function') ? getModelParams() : undefined
         );
     }
 }
@@ -3227,6 +3493,14 @@ micBtn.addEventListener('click', async () => {
         return;
     }
 
+    // Garde-fou : refuser de capturer l'audio si la clé API du provider STT est absente.
+    // Évite de gaspiller un enregistrement qui finirait en 401.
+    const sttProvider = AUDIO_SETTINGS.sttProvider || 'openai';
+    if (!API_KEYS[sttProvider]) {
+        alert(`Clé API ${sttProvider} manquante — configurez-la dans les réglages avant d'utiliser le micro.`);
+        return;
+    }
+
     try {
         if (!micStream || !micStream.active) {
             micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -3249,9 +3523,16 @@ micBtn.addEventListener('click', async () => {
                 micBtn.innerHTML = micIconDefault;
                 promptInput.value += (promptInput.value && !promptInput.value.endsWith(' ') ? ' ' : '') + text;
                 promptInput.dispatchEvent(new Event('input'));
-                // Coût STT simplifié
-                const sttCost = durationMin * 0.006; // Whisper $0.006/min
+
+                // Coût STT dynamique : lookup dans MODELS_DATA.stt selon le provider configuré.
+                // Format prix attendu : "$0.006/min" → on extrait le float.
+                const sttModel = MODELS_DATA.stt.find(m => m.editeur === sttProvider);
+                const pricePerMin = sttModel?.prix?.includes('/min')
+                    ? parseFloat(sttModel.prix.replace(/[^0-9.]/g, ''))
+                    : 0;
+                const sttCost = durationMin * (Number.isFinite(pricePerMin) ? pricePerMin : 0);
                 totalAudioCost += sttCost;
+                addCostForModel('stt', 0, 0, sttCost);
                 updateTokenDisplay();
                 if (conversationId) saveConversation();
             }, (err) => {
@@ -3530,6 +3811,9 @@ function openApiKeysModal() {
     const _mEl = document.getElementById('apikey-mistral'); if (_mEl) _mEl.value = API_KEYS.mistral || '';
     const _gEl = document.getElementById('apikey-grok'); if (_gEl) _gEl.value = API_KEYS.grok || '';
     const _dEl = document.getElementById('apikey-deepseek'); if (_dEl) _dEl.value = API_KEYS.deepseek || '';
+    // PR7 Kiro v3 : nouveaux providers Z.ai (GLM-5/5.1) et OpenRouter (Flux 2)
+    const _zEl = document.getElementById('apikey-zai'); if (_zEl) _zEl.value = API_KEYS.zai || '';
+    const _orEl = document.getElementById('apikey-openrouter'); if (_orEl) _orEl.value = API_KEYS.openrouter || '';
     const _lEl = document.getElementById('apikey-local'); if (_lEl) _lEl.value = API_KEYS.local || '';
     (document.getElementById('apikey-local-status')||{style:{},textContent:'',className:'',checked:false,value:''}).textContent = '';
     (document.getElementById('apikey-local-status')||{style:{},textContent:'',className:'',checked:false,value:''}).className = 'apikey-local-status';
@@ -3558,44 +3842,30 @@ function closeApiKeysModal() {
 }
 
 function saveApiKeysFromModal() {
+    // PR7 (Kiro v3) : modale refondue en 7 onglets. Le panel Cles API gere
+    // les 9 providers (les 7 historiques + Z.ai et OpenRouter ajoutes en PR1).
+    const _val = (id) => document.getElementById(id)?.value.trim() || '';
     const keys = {
-        openai: document.getElementById('apikey-openai').value.trim(),
-        anthropic: document.getElementById('apikey-anthropic').value.trim(),
-        google: document.getElementById('apikey-google').value.trim(),
-        perplexity: document.getElementById('apikey-perplexity').value.trim(),
-        mistral: document.getElementById('apikey-mistral')?.value.trim() || '',
-        grok: document.getElementById('apikey-grok')?.value.trim() || '',
-        deepseek: document.getElementById('apikey-deepseek')?.value.trim() || '',
-        local: document.getElementById('apikey-local')?.value.trim() || ''
+        openai:     _val('apikey-openai'),
+        anthropic:  _val('apikey-anthropic'),
+        google:     _val('apikey-google'),
+        perplexity: _val('apikey-perplexity'),
+        mistral:    _val('apikey-mistral'),
+        grok:       _val('apikey-grok'),
+        deepseek:   _val('apikey-deepseek'),
+        zai:        _val('apikey-zai'),
+        openrouter: _val('apikey-openrouter'),
+        local:      _val('apikey-local')
     };
-    const tts = document.getElementById('audio-tts-provider').value;
-    const stt = document.getElementById('audio-stt-provider').value;
-    const enhance = document.getElementById('enhance-provider').value;
-    const summary = document.getElementById('summary-model').value;
-    const roleOptimize = document.getElementById('role-optimize-model').value;
-
-    // Validation : vérifier que les clés nécessaires sont renseignées
-    const errEl = document.getElementById('models-error');
-    const getEditeurForModel = (val) => {
-        if (val === '__local__') return 'local';
-        const m = MODELS_DATA.text.find(m => m.id === val);
-        return m?.editeur || 'openai';
-    };
-    const checks = [
-        { label: 'Synthèse vocale', editeur: tts },
-        { label: 'Transcription', editeur: stt },
-        { label: 'Amélioration de prompts', editeur: getEditeurForModel(enhance) },
-        { label: 'Résumé IA', editeur: getEditeurForModel(summary) },
-        { label: 'Optimisation de rôle', editeur: getEditeurForModel(roleOptimize) },
-    ];
-    // Validation désactivée - on sauvegarde sans bloquer
-    if (typeof errEl !== 'undefined' && errEl && errEl.style) errEl.style.display = 'none';
-
     saveApiKeys(keys);
-    saveAudioSettings({ ttsProvider: tts, sttProvider: stt, enhanceModel: enhance, summaryModel: summary, roleOptimizeModel: roleOptimize });
-    // Sauvegarder le budget
+
+    // Audio settings (onglet Audio v2 : seulement TTS + STT providers retenus,
+    // les selects enhance/summary/roleOptimize ont ete retires de la modale).
+    const tts = _val('audio-tts-provider') || 'openai';
+    const stt = _val('audio-stt-provider') || 'openai';
+    saveAudioSettings({ ttsProvider: tts, sttProvider: stt });
+
     saveBudgetSettings();
-    // Rafraîchir les modèles locaux puis le dropdown
     fetchLocalModels().then(() => populateModelSelect());
     closeApiKeysModal();
 }
@@ -4107,5 +4377,351 @@ function updateCanvasReopenBtn() {
         d.appendChild(icon); d.appendChild(text); d.appendChild(closeBtn);
         document.body.appendChild(d);
     }, 1500);
+})();
+
+// ─────────── Right panel - onglet General : sliders + reasoning (Kiro v3 - PR4) ───────────
+// Defaults Kiro v3 pour le bouton "Reset".
+const MODEL_PARAMS_DEFAULTS = {
+    'temperature':       { value: 0.7,   display: '0.7' },
+    'top-p':             { value: 1,     display: '1.0' },
+    'max-tokens':        { value: 4096,  display: '4096' },
+    'freq-penalty':      { value: 0,     display: '0.0' },
+    'presence-penalty':  { value: 0,     display: '0.0' }
+};
+const PARAM_IDS = ['temperature', 'top-p', 'max-tokens', 'freq-penalty', 'presence-penalty'];
+
+// Affichage de la valeur courante d'un slider (gere les decimales selon step)
+function _rpFormatRangeValue(rangeEl) {
+    const v = parseFloat(rangeEl.value);
+    const step = rangeEl.step;
+    if (step.includes('.')) return v.toFixed(1);
+    return String(parseInt(rangeEl.value));
+}
+
+// Wire : input + change event sur chaque slider/toggle
+PARAM_IDS.forEach(id => {
+    const range  = document.getElementById('rp-' + id + '-range');
+    const value  = document.getElementById('rp-' + id + '-value');
+    const toggle = document.getElementById('rp-' + id + '-toggle');
+    if (!range || !toggle) return;
+    range.addEventListener('input', () => { if (value) value.textContent = _rpFormatRangeValue(range); });
+    toggle.addEventListener('change', () => {
+        const section = toggle.closest('.right-panel-section');
+        if (section) section.classList.toggle('rp-param-disabled', !toggle.checked);
+    });
+});
+// Toggle pour la section reasoning effort (select au lieu de range)
+const _rpEffortToggle = document.getElementById('rp-effort-toggle');
+if (_rpEffortToggle) {
+    _rpEffortToggle.addEventListener('change', () => {
+        const section = _rpEffortToggle.closest('.right-panel-section');
+        if (section) section.classList.toggle('rp-param-disabled', !_rpEffortToggle.checked);
+    });
+}
+
+// Visibilité du select effort selon le modele courant.
+// Appelee a chaque change de model (#text-model-select) + au boot.
+function updateEffortSection(modelId) {
+    const section = document.getElementById('rp-effort-section');
+    const select  = document.getElementById('rp-effort-select');
+    if (!section || !select) return;
+    if (!modelId || typeof supportsReasoningEffort !== 'function' || !supportsReasoningEffort(modelId)) {
+        section.style.display = 'none';
+        return;
+    }
+    section.style.display = '';
+    // Adapte les options du select aux niveaux disponibles pour ce modele
+    const levels = (typeof getEffortLevels === 'function') ? getEffortLevels(modelId) : ['minimal', 'low', 'medium', 'high'];
+    const labels = { minimal: 'Minimal', low: 'Faible', medium: 'Moyen', high: 'Élevé' };
+    const previous = select.value;
+    select.innerHTML = levels.map(l =>
+        `<option value="${l}"${l === previous ? ' selected' : ''}>${labels[l] || l}</option>`
+    ).join('');
+    // Si la valeur precedente n'est plus dans la liste, fallback sur 'medium' ou 1ere option
+    if (!levels.includes(previous)) select.value = levels.includes('medium') ? 'medium' : levels[0];
+}
+
+// Collect tous les params (uniquement ceux dont la checkbox est cochee).
+function getModelParams() {
+    const out = {};
+    const v = (id, parser) => {
+        const toggle = document.getElementById('rp-' + id + '-toggle');
+        const range  = document.getElementById('rp-' + id + '-range');
+        if (!toggle || !toggle.checked || !range) return undefined;
+        return parser(range.value);
+    };
+    const t = v('temperature', parseFloat);   if (t !== undefined) out.temperature = t;
+    const p = v('top-p', parseFloat);          if (p !== undefined) out.top_p = p;
+    const m = v('max-tokens', parseInt);       if (m !== undefined) out.max_tokens = m;
+    const f = v('freq-penalty', parseFloat);   if (f !== undefined) out.frequency_penalty = f;
+    const r = v('presence-penalty', parseFloat); if (r !== undefined) out.presence_penalty = r;
+    const eToggle = document.getElementById('rp-effort-toggle');
+    const eSelect = document.getElementById('rp-effort-select');
+    if (eToggle && eToggle.checked && eSelect) out.reasoning_effort = eSelect.value;
+    return out;
+}
+window.getModelParams = getModelParams;
+
+// Reset : remet aux defaults + decoche tous les toggles
+const _rpResetBtn = document.getElementById('rp-params-reset-btn');
+if (_rpResetBtn) {
+    _rpResetBtn.addEventListener('click', () => {
+        for (const [id, def] of Object.entries(MODEL_PARAMS_DEFAULTS)) {
+            const range = document.getElementById('rp-' + id + '-range');
+            const display = document.getElementById('rp-' + id + '-value');
+            const toggle = document.getElementById('rp-' + id + '-toggle');
+            if (range) range.value = def.value;
+            if (display) display.textContent = def.display;
+            if (toggle) {
+                toggle.checked = false;
+                toggle.closest('.right-panel-section')?.classList.add('rp-param-disabled');
+            }
+        }
+        if (_rpEffortToggle) {
+            _rpEffortToggle.checked = false;
+            _rpEffortToggle.closest('.right-panel-section')?.classList.add('rp-param-disabled');
+        }
+    });
+}
+
+// ─────────── Right panel - onglet Image : format buttons + getImageParams (Kiro v3 - PR5) ───────────
+// Format buttons : square / portrait / landscape (un seul actif a la fois)
+document.querySelectorAll('.image-format-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.image-format-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    });
+});
+
+// Sliders OpenRouter (steps + guidance) : sync valeur affichee
+['or-steps', 'or-guidance'].forEach(id => {
+    const range = document.getElementById('rp-image-' + id + '-range');
+    const value = document.getElementById('rp-image-' + id + '-value');
+    if (!range || !value) return;
+    range.addEventListener('input', () => {
+        value.textContent = range.step.includes('.') ? parseFloat(range.value).toFixed(1) : range.value;
+    });
+});
+
+// Adapte la visibilite des sections selon le provider du modele image courant.
+// Sections marquees data-providers='openai' visibles seulement pour modeles OpenAI, etc.
+function updateImageParamsVisibility(modelId) {
+    const editeur = modelId ? (typeof getImageModelEditeur === 'function' ? getImageModelEditeur(modelId) : null) : null;
+    const sections = document.querySelectorAll('#rp-tab-image [data-providers]');
+    const hint = document.getElementById('rp-image-no-model-hint');
+    sections.forEach(s => {
+        const supported = s.dataset.providers.split(',').map(p => p.trim()).includes(editeur);
+        s.classList.toggle('rp-section-disabled', !supported);
+    });
+    // Le hint "selectionnez un modele image" cache si un modele image est actif
+    if (hint) hint.style.display = editeur ? 'none' : '';
+}
+
+// Collect tous les params image (provider-aware)
+function getImageParams() {
+    const out = {};
+    // Format (commun) : recupere le data-format du bouton actif
+    const activeFormatBtn = document.querySelector('.image-format-btn.active');
+    if (activeFormatBtn) out.format = activeFormatBtn.dataset.format;
+    // OpenAI : quality
+    const qSel = document.getElementById('rp-image-quality-select');
+    if (qSel) out.quality = qSel.value;
+    // Google Gemini : size
+    const sizeSel = document.getElementById('rp-image-gemini-size-select');
+    if (sizeSel) out.imageSize = sizeSel.value;
+    // OpenRouter (Flux) : steps + guidance
+    const stepsRange = document.getElementById('rp-image-or-steps-range');
+    if (stepsRange) out.steps = parseInt(stepsRange.value);
+    const guidanceRange = document.getElementById('rp-image-or-guidance-range');
+    if (guidanceRange) out.guidance = parseFloat(guidanceRange.value);
+    return out;
+}
+window.getImageParams = getImageParams;
+window.updateImageParamsVisibility = updateImageParamsVisibility;
+
+// ─────────── Right panel (Kiro v3 - PR3) ───────────
+// Wiring du panneau lateral droit (3e colonne) avec onglets Général / Image.
+// Etat ouvert/ferme + onglet actif sauvegardes en localStorage 'goudai-right-panel'.
+(function() {
+    const panel = document.getElementById('right-panel');
+    const toggleBtn = document.getElementById('right-panel-toggle');
+    if (!panel || !toggleBtn) return;
+
+    const RP_STORAGE_KEY = 'goudai-right-panel';
+    const DEFAULT_TAB = 'general';
+
+    function rpLoadState() {
+        try {
+            const raw = localStorage.getItem(RP_STORAGE_KEY);
+            if (!raw) return { collapsed: false, tab: DEFAULT_TAB };
+            const s = JSON.parse(raw);
+            return { collapsed: !!s.collapsed, tab: s.tab || DEFAULT_TAB };
+        } catch { return { collapsed: false, tab: DEFAULT_TAB }; }
+    }
+    function rpSaveState(state) {
+        try { localStorage.setItem(RP_STORAGE_KEY, JSON.stringify(state)); } catch {}
+    }
+
+    function setRightPanelTab(name) {
+        const tabs = panel.querySelectorAll('.rp-tab');
+        let activeTab = null;
+        tabs.forEach(t => {
+            const isActive = t.dataset.rpTab === name;
+            t.classList.toggle('active', isActive);
+            if (isActive) activeTab = t;
+        });
+        panel.querySelectorAll('.rp-tab-content').forEach(c => {
+            c.classList.toggle('active', c.id === 'rp-tab-' + name);
+        });
+        // Anime l'indicateur sous l'onglet actif via variables CSS.
+        const tabsContainer = panel.querySelector('.rp-tabs');
+        if (tabsContainer && activeTab) {
+            tabsContainer.style.setProperty('--rp-tab-x', activeTab.offsetLeft + 'px');
+            tabsContainer.style.setProperty('--rp-tab-w', activeTab.offsetWidth + 'px');
+        }
+        const state = rpLoadState();
+        rpSaveState({ ...state, tab: name });
+    }
+
+    function toggleRightPanel(force) {
+        const willCollapse = (typeof force === 'boolean') ? force : !panel.classList.contains('collapsed');
+        panel.classList.toggle('collapsed', willCollapse);
+        toggleBtn.classList.toggle('collapsed', willCollapse);
+        toggleBtn.title = willCollapse ? 'Afficher le panneau de réglages' : 'Masquer le panneau de réglages';
+        const state = rpLoadState();
+        rpSaveState({ ...state, collapsed: willCollapse });
+    }
+
+    // Listeners
+    toggleBtn.addEventListener('click', () => toggleRightPanel());
+    panel.querySelectorAll('.rp-tab').forEach(tab => {
+        tab.addEventListener('click', () => setRightPanelTab(tab.dataset.rpTab));
+    });
+
+    // Restore au boot (state localStorage). Sur mobile (<= 768px), on FORCE le collapse
+    // pour ne pas envahir l'ecran a la 1ere visite.
+    const initial = rpLoadState();
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    const initialCollapsed = initial.collapsed || (isMobile && localStorage.getItem(RP_STORAGE_KEY) === null);
+    panel.classList.toggle('collapsed', initialCollapsed);
+    toggleBtn.classList.toggle('collapsed', initialCollapsed);
+    toggleBtn.title = initialCollapsed ? 'Afficher le panneau de réglages' : 'Masquer le panneau de réglages';
+    // Initialise l'onglet actif + l'indicateur en async (apres le render initial).
+    requestAnimationFrame(() => setRightPanelTab(initial.tab));
+
+    // Expose pour les futures PR4/PR5 (qui voudront switcher vers leurs onglets).
+    window.setRightPanelTab = setRightPanelTab;
+    window.toggleRightPanel = toggleRightPanel;
+})();
+
+// ─────────── Modale Configuration v2 - 7 onglets (Kiro v3 - PR7) ───────────
+(function() {
+    const tabs   = document.querySelectorAll('#apikeys-modal-overlay .config-tab');
+    const panels = document.querySelectorAll('#apikeys-modal-overlay .config-tab-panel');
+    if (!tabs.length || !panels.length) return;
+
+    function setActiveTab(name) {
+        tabs.forEach(t   => t.classList.toggle('active', t.dataset.configTab === name));
+        panels.forEach(p => p.classList.toggle('active', p.dataset.configPanel === name));
+    }
+    tabs.forEach(t => t.addEventListener('click', () => setActiveTab(t.dataset.configTab)));
+    window.setConfigTab = setActiveTab;
+
+    // Onglet Stats : ouvre la modale dashboard existante
+    const openDash = document.getElementById('config-open-dashboard');
+    if (openDash) openDash.addEventListener('click', () => {
+        document.getElementById('apikeys-modal-overlay').style.display = 'none';
+        const dash = document.getElementById('dashboard-modal-overlay');
+        if (dash) dash.style.display = 'flex';
+    });
+
+    // Onglet FAQ : ouvre la modale FAQ autonome (PR8)
+    const openFaq = document.getElementById('config-open-faq');
+    if (openFaq) openFaq.addEventListener('click', () => {
+        document.getElementById('apikeys-modal-overlay').style.display = 'none';
+        document.getElementById('faq-btn')?.click();
+    });
+
+    // Onglet Apparence : delegue a la fonction applyTheme() globale (issue #14).
+    // Celle-ci sync le body.dark + le bouton sidebar + le localStorage.
+    const themeRadios = document.querySelectorAll('input[name="theme-choice"]');
+    themeRadios.forEach(r => {
+        r.addEventListener('change', () => {
+            if (r.checked && typeof applyTheme === 'function') applyTheme(r.value);
+        });
+    });
+
+    // Onglet Partager : URL de l'instance + bouton copier
+    const shareInput = document.getElementById('share-url-input');
+    const shareCopy  = document.getElementById('share-url-copy');
+    if (shareInput) shareInput.value = window.location.origin + '/';
+    if (shareCopy) shareCopy.addEventListener('click', () => {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(shareInput.value);
+            const orig = shareCopy.textContent;
+            shareCopy.textContent = '✓';
+            setTimeout(() => { shareCopy.textContent = orig; }, 1200);
+        }
+    });
+})();
+
+// ─────────── FAQ (Kiro v3 - PR8) ───────────
+// Modale autonome avec onglets (General/Usage/Problemes) + items collapsible.
+// Donnees statiques chargees depuis frontend/js/faq.js (FAQ_CATEGORIES + FAQ_DATA).
+(function() {
+    const overlay   = document.getElementById('faq-modal-overlay');
+    const tabsEl    = document.getElementById('faq-tabs');
+    const container = document.getElementById('faq-container');
+    const closeBtn  = document.getElementById('faq-modal-close');
+    const triggerBtn = document.getElementById('faq-btn');
+    if (!overlay || !tabsEl || !container || !triggerBtn || typeof FAQ_CATEGORIES === 'undefined') return;
+
+    let activeCat = FAQ_CATEGORIES[0].id;
+
+    function renderTabs() {
+        tabsEl.innerHTML = '';
+        for (const cat of FAQ_CATEGORIES) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'faq-tab' + (cat.id === activeCat ? ' active' : '');
+            btn.textContent = cat.label;
+            btn.addEventListener('click', () => { activeCat = cat.id; renderTabs(); renderItems(); });
+            tabsEl.appendChild(btn);
+        }
+    }
+    function renderItems() {
+        container.innerHTML = '';
+        const items = FAQ_DATA.filter(i => i.category === activeCat);
+        if (items.length === 0) {
+            container.innerHTML = '<p class="rp-placeholder">Aucune question dans cette catégorie pour l\u2019instant.</p>';
+            return;
+        }
+        for (const item of items) {
+            const wrap = document.createElement('div');
+            wrap.className = 'faq-item';
+            const q = document.createElement('button');
+            q.type = 'button';
+            q.className = 'faq-question';
+            q.textContent = item.question;
+            const a = document.createElement('div');
+            a.className = 'faq-answer';
+            // Reponse contient du HTML (strong, br, code...) -> innerHTML safe car contenu statique de faq.js
+            a.innerHTML = item.answer;
+            q.addEventListener('click', () => wrap.classList.toggle('open'));
+            wrap.appendChild(q);
+            wrap.appendChild(a);
+            container.appendChild(wrap);
+        }
+    }
+    function openFaq() {
+        renderTabs();
+        renderItems();
+        overlay.style.display = 'flex';
+    }
+    function closeFaq() { overlay.style.display = 'none'; }
+
+    triggerBtn.addEventListener('click', openFaq);
+    closeBtn.addEventListener('click', closeFaq);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeFaq(); });
 })();
 
