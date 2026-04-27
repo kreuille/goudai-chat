@@ -1152,6 +1152,137 @@ html, body {
     border-radius: 8px;
 }
 
+/* ─────────── Right panel — onglet Général (Kiro v3 - PR4) ─────────── */
+/* Sections de parametres LLM (temperature, top-p, max_tokens...) avec toggle
+   d'activation. Section.rp-param-disabled : opacity reduite + non interactive. */
+.right-panel-section {
+    border: 1px solid var(--border, #2a2a2a);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin: 8px 0;
+    background: var(--bg-card, rgba(255, 255, 255, 0.02));
+    transition: opacity 0.2s;
+}
+.right-panel-section.rp-param-disabled {
+    opacity: 0.45;
+}
+.right-panel-section.rp-param-disabled .rp-range,
+.right-panel-section.rp-param-disabled .rp-effort-select {
+    pointer-events: none;
+    filter: grayscale(0.4);
+}
+.right-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.rp-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+.right-panel-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text, #e9e9e9);
+}
+.rp-param-toggle {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--border, #2a2a2a);
+    border-radius: 3px;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s;
+}
+.rp-param-toggle:checked {
+    background: var(--accent, #c4881e);
+    border-color: var(--accent, #c4881e);
+}
+.rp-param-toggle:checked::after {
+    content: '';
+    position: absolute;
+    left: 3.5px;
+    top: 0px;
+    width: 4px;
+    height: 8px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+.rp-range-value {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--accent, #c4881e);
+    font-variant-numeric: tabular-nums;
+    min-width: 40px;
+    text-align: right;
+}
+.rp-range {
+    width: 100%;
+    height: 4px;
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--border, #2a2a2a);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+.rp-range::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent, #c4881e);
+    cursor: pointer;
+    border: 2px solid var(--bg-card, #1e1e1e);
+    transition: transform 0.1s;
+}
+.rp-range::-webkit-slider-thumb:hover { transform: scale(1.15); }
+.rp-range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent, #c4881e);
+    cursor: pointer;
+    border: 2px solid var(--bg-card, #1e1e1e);
+}
+.rp-effort-select {
+    width: 100%;
+    background: var(--bg-input, #1a1a1a);
+    color: var(--text, #e9e9e9);
+    border: 1px solid var(--border, #2a2a2a);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+.rp-reset-btn {
+    margin-top: 12px;
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--border, #2a2a2a);
+    color: var(--text-secondary, #a0a0a0);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+.rp-reset-btn:hover {
+    color: var(--accent, #c4881e);
+    border-color: var(--accent, #c4881e);
+}
+
 /* Bouton toggle du right panel - fixed top-right (symetrique du #sidebar-toggle a gauche) */
 .right-panel-toggle {
     position: fixed;

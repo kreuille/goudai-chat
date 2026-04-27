@@ -17,7 +17,7 @@
     <meta name="apple-mobile-web-app-title" content="GoudAI Chat">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
 
-    <link rel="stylesheet" href="css/style.css?v=3">
+    <link rel="stylesheet" href="css/style.css?v=4">
     <link rel="stylesheet" href="css/canvas.css?v=43">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <!-- Apply dark mode before paint -->
@@ -192,9 +192,85 @@
             <button class="rp-tab active" data-rp-tab="general" type="button">Général</button>
             <button class="rp-tab" data-rp-tab="image" type="button">Image</button>
         </div>
-        <!-- Contenu vide pour l'instant — rempli par PR4 (general) et PR5 (image) -->
+        <!-- Onglet General (Kiro v3 - PR4) : reasoning effort + sliders parametres LLM -->
         <div class="rp-tab-content active" id="rp-tab-general">
-            <p class="rp-placeholder">Les paramètres de modèle (température, top-p, raisonnement…) arrivent dans une prochaine mise à jour.</p>
+            <!-- Effort de raisonnement (visible si supportsReasoningEffort(currentModel)) -->
+            <div class="right-panel-section rp-param-disabled" id="rp-effort-section" style="display:none">
+                <div class="right-panel-header">
+                    <span class="rp-title-group">
+                        <input type="checkbox" class="rp-param-toggle" id="rp-effort-toggle">
+                        <span class="right-panel-title">Effort de raisonnement</span>
+                    </span>
+                </div>
+                <select id="rp-effort-select" class="rp-effort-select">
+                    <option value="minimal">Minimal</option>
+                    <option value="low">Faible</option>
+                    <option value="medium" selected>Moyen</option>
+                    <option value="high">Élevé</option>
+                </select>
+            </div>
+
+            <!-- Temperature -->
+            <div class="right-panel-section rp-param-disabled" id="rp-temperature-section">
+                <div class="right-panel-header">
+                    <span class="rp-title-group">
+                        <input type="checkbox" class="rp-param-toggle" id="rp-temperature-toggle">
+                        <span class="right-panel-title">Température</span>
+                    </span>
+                    <span class="rp-range-value" id="rp-temperature-value">0.7</span>
+                </div>
+                <input type="range" class="rp-range" id="rp-temperature-range" min="0" max="2" step="0.1" value="0.7">
+            </div>
+
+            <!-- Top-P -->
+            <div class="right-panel-section rp-param-disabled" id="rp-top-p-section">
+                <div class="right-panel-header">
+                    <span class="rp-title-group">
+                        <input type="checkbox" class="rp-param-toggle" id="rp-top-p-toggle">
+                        <span class="right-panel-title">Top-P</span>
+                    </span>
+                    <span class="rp-range-value" id="rp-top-p-value">1.0</span>
+                </div>
+                <input type="range" class="rp-range" id="rp-top-p-range" min="0" max="1" step="0.05" value="1">
+            </div>
+
+            <!-- Max tokens -->
+            <div class="right-panel-section rp-param-disabled" id="rp-max-tokens-section">
+                <div class="right-panel-header">
+                    <span class="rp-title-group">
+                        <input type="checkbox" class="rp-param-toggle" id="rp-max-tokens-toggle">
+                        <span class="right-panel-title">Max tokens</span>
+                    </span>
+                    <span class="rp-range-value" id="rp-max-tokens-value">4096</span>
+                </div>
+                <input type="range" class="rp-range" id="rp-max-tokens-range" min="256" max="16384" step="256" value="4096">
+            </div>
+
+            <!-- Frequency penalty -->
+            <div class="right-panel-section rp-param-disabled" id="rp-freq-penalty-section">
+                <div class="right-panel-header">
+                    <span class="rp-title-group">
+                        <input type="checkbox" class="rp-param-toggle" id="rp-freq-penalty-toggle">
+                        <span class="right-panel-title">Frequency penalty</span>
+                    </span>
+                    <span class="rp-range-value" id="rp-freq-penalty-value">0.0</span>
+                </div>
+                <input type="range" class="rp-range" id="rp-freq-penalty-range" min="0" max="2" step="0.1" value="0">
+            </div>
+
+            <!-- Presence penalty -->
+            <div class="right-panel-section rp-param-disabled" id="rp-presence-penalty-section">
+                <div class="right-panel-header">
+                    <span class="rp-title-group">
+                        <input type="checkbox" class="rp-param-toggle" id="rp-presence-penalty-toggle">
+                        <span class="right-panel-title">Presence penalty</span>
+                    </span>
+                    <span class="rp-range-value" id="rp-presence-penalty-value">0.0</span>
+                </div>
+                <input type="range" class="rp-range" id="rp-presence-penalty-range" min="0" max="2" step="0.1" value="0">
+            </div>
+
+            <button id="rp-params-reset-btn" class="rp-reset-btn" type="button">Réinitialiser les paramètres</button>
         </div>
         <div class="rp-tab-content" id="rp-tab-image">
             <p class="rp-placeholder">Les paramètres image (format, qualité, modèles Flux…) arrivent dans une prochaine mise à jour.</p>
@@ -333,9 +409,9 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="models.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/api.js?v=3"></script>
+    <script src="js/api.js?v=4"></script>
     <script src="js/filemanager.js"></script>
-    <script src="js/app.js?v=84"></script>
+    <script src="js/app.js?v=85"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
