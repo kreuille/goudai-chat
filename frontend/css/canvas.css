@@ -434,7 +434,45 @@
   .canvas-panel.open .canvas-editor { font-size: 16px !important; }
   /* History panel: full width sur mobile */
   .canvas-panel.open .canvas-history-panel { width: 100% !important; }
+
+  /* Bouton retour discussion mobile : visible, large, pin a gauche */
+  .canvas-panel.open .canvas-btn-back-mobile {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    padding: 0 !important;
+    background: var(--accent-soft) !important;
+    color: var(--accent) !important;
+    border-color: var(--accent-glow) !important;
+    flex-shrink: 0;
+  }
+
+  /* Compacter les autres boutons d'action — icone seule, sans texte */
+  .canvas-panel.open .canvas-header-right .canvas-action-btn {
+    padding: 6px 8px !important;
+    font-size: 0 !important;
+    min-width: 34px;
+    min-height: 34px;
+  }
+  .canvas-panel.open .canvas-header-right .canvas-action-btn svg {
+    width: 15px !important;
+    height: 15px !important;
+  }
+  /* Le X ferme conserve son symbole texte */
+  .canvas-panel.open .canvas-btn-close-panel {
+    font-size: 20px !important;
+  }
+  /* Compteur d'history : petit badge accent, garde son chiffre */
+  .canvas-panel.open #cv-history-btn {
+    font-size: 12px !important;
+    color: var(--accent) !important;
+  }
 }
+
+/* Bouton retour discussion : cache en desktop (l'utilisateur a le X a droite) */
+.canvas-btn-back-mobile { display: none; }
 
 /* ── Bouton flottant réouvrir canvas ────────────────────────────── */
 .canvas-reopen-fab {
