@@ -794,15 +794,90 @@ async function streamOpenAICompat(modelId, baseUrl, apiKey, conversationHistory,
 }
 // ===================== Génération d'images =====================
 
-function generateImage(modelId, prompt, onDone, onError, referenceImages, signal, format) {
+// PR5 Kiro v3 : signature etendue avec imageParams (BC : optional, ignore si non lu).
+function generateImage(modelId, prompt, onDone, onError, referenceImages, signal, format, imageParams) {
     const editeur = getImageModelEditeur(modelId);
     switch (editeur) {
         case 'openai':
-            return generateImageOpenAI(modelId, prompt, onDone, onError, referenceImages, signal, format);
+            return generateImageOpenAI(modelId, prompt, onDone, onError, referenceImages, signal, format, imageParams);
         case 'google':
-            return generateImageGemini(modelId, prompt, onDone, onError, referenceImages, signal, format);
+            return generateImageGemini(modelId, prompt, onDone, onError, referenceImages, signal, format, imageParams);
+        case 'openrouter':
+            return generateImageOpenRouter(modelId, prompt, onDone, onError, referenceImages, signal, format, imageParams);
         default:
             onError(new Error(`Éditeur inconnu pour le modèle image ${modelId}`));
+    }
+}
+
+// ===================== OpenRouter Image (Flux 2) (Kiro v3 - PR5) =====================
+// Pass-through OpenRouter -> Black Forest Labs. API compatible Chat Completions
+// avec modalities=['image'] et image_config.aspect_ratio. Les params Flux specifiques
+// (num_steps, guidance) sont passes au top-level du body.
+async function generateImageOpenRouter(modelId, prompt, onDone, onError, referenceImages, signal, format, imageParams) {
+    try {
+        const aspectMap = { square: '1:1', vertical: '9:16', horizontal: '16:9' };
+        const aspectRatio = aspectMap[format || imageParams?.format] || '1:1';
+
+        const content = [];
+        if (referenceImages && referenceImages.length > 0) {
+            for (const img of referenceImages) {
+                content.push({
+                    type: 'image_url',
+                    image_url: { url: `data:${img.mimeType || 'image/png'};base64,${img.data}` }
+                });
+            }
+        }
+        content.push({ type: 'text', text: prompt });
+
+        const body = {
+            model: modelId,
+            messages: [{ role: 'user', content }],
+            modalities: ['image'],
+            stream: false,
+            image_config: { aspect_ratio: aspectRatio }
+        };
+        if (imageParams?.steps !== undefined)    body.num_steps = imageParams.steps;
+        if (imageParams?.guidance !== undefined) body.guidance  = imageParams.guidance;
+
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + API_KEYS.openrouter
+            },
+            body: JSON.stringify(body),
+            signal
+        });
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error('OpenRouter Image API error ' + response.status + ': ' + errText);
+        }
+
+        const data = await response.json();
+        const result = { text: '', images: [], usage: null, imageCount: 0 };
+        const msg = data.choices?.[0]?.message;
+        if (msg) {
+            if (msg.content) result.text = msg.content;
+            const imgs = msg.images || [];
+            for (const img of imgs) {
+                const url = img.image_url?.url || img.url || '';
+                const match = /^data:([^;]+);base64,(.+)$/.exec(url);
+                if (match) {
+                    result.images.push({ b64: match[2], mimeType: match[1] });
+                    result.imageCount++;
+                }
+            }
+        }
+        if (data.usage) {
+            result.usage = {
+                input_tokens: data.usage.prompt_tokens || 0,
+                output_tokens: data.usage.completion_tokens || 0
+            };
+        }
+        onDone(result);
+    } catch (err) {
+        if (err.name === 'AbortError') { onDone({ text: '', images: [], usage: null, imageCount: 0 }); return; }
+        onError(err);
     }
 }
 

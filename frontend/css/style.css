@@ -1283,6 +1283,41 @@ html, body {
     border-color: var(--accent, #c4881e);
 }
 
+/* ─────────── Right panel — onglet Image (Kiro v3 - PR5) ─────────── */
+/* Format buttons (square / portrait / landscape) */
+.image-format-options {
+    display: flex;
+    gap: 6px;
+    width: 100%;
+}
+.image-format-btn {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border, #2a2a2a);
+    border-radius: 6px;
+    padding: 8px 0;
+    color: var(--text-secondary, #a0a0a0);
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.image-format-btn:hover {
+    color: var(--text, #e9e9e9);
+    border-color: var(--text-secondary, #a0a0a0);
+}
+.image-format-btn.active {
+    color: var(--accent, #c4881e);
+    border-color: var(--accent, #c4881e);
+    background: rgba(196, 136, 30, 0.1);
+}
+
+/* Sections data-providers : visibles uniquement pour le provider du modele image actif */
+[data-providers].rp-section-disabled {
+    display: none !important;
+}
+
 /* Bouton toggle du right panel - fixed top-right (symetrique du #sidebar-toggle a gauche) */
 .right-panel-toggle {
     position: fixed;
