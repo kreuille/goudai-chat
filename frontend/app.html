@@ -17,7 +17,7 @@
     <meta name="apple-mobile-web-app-title" content="GoudAI Chat">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
 
-    <link rel="stylesheet" href="css/style.css?v=17">
+    <link rel="stylesheet" href="css/style.css?v=18">
     <link rel="stylesheet" href="css/canvas.css?v=44">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <!-- Apply dark mode before paint -->
@@ -613,6 +613,27 @@
         </div>
     </div>
 
+    <!-- R4 redesign: Command palette ⌘K. Recherche conversations / roles / prompts / modeles
+         + actions rapides. Navigation clavier (flèches + Enter), ESC pour fermer. -->
+    <div id="cmd-palette-overlay" class="cmd-palette-overlay" style="display:none">
+        <div class="cmd-palette" role="dialog" aria-label="Command palette">
+            <div class="cmd-palette-search">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <input id="cmd-palette-input" type="text" autocomplete="off" spellcheck="false"
+                    placeholder="Rechercher une conversation, un rôle, un modèle, ou une action..."
+                    data-i18n-fr-placeholder="Rechercher une conversation, un rôle, un modèle, ou une action..."
+                    data-i18n-en-placeholder="Search a conversation, role, model, or action...">
+                <kbd class="cmd-palette-kbd">ESC</kbd>
+            </div>
+            <div id="cmd-palette-results" class="cmd-palette-results"></div>
+            <div class="cmd-palette-footer">
+                <span><kbd class="cmd-palette-kbd">↑↓</kbd> <span data-i18n-fr="naviguer" data-i18n-en="navigate">naviguer</span></span>
+                <span><kbd class="cmd-palette-kbd">↵</kbd> <span data-i18n-fr="sélectionner" data-i18n-en="select">sélectionner</span></span>
+                <span><kbd class="cmd-palette-kbd">⌘K</kbd> <span data-i18n-fr="ouvrir" data-i18n-en="open">ouvrir</span></span>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="models.js"></script>
@@ -620,7 +641,7 @@
     <script src="js/auth.js"></script>
     <script src="js/api.js?v=6"></script>
     <script src="js/filemanager.js"></script>
-    <script src="js/app.js?v=95"></script>
+    <script src="js/app.js?v=96"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
