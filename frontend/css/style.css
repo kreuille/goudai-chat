@@ -333,6 +333,42 @@ body::before {
 .model-select:hover{border-color:var(--accent-glow)}
 .model-select:focus{border-color:var(--accent)}
 .model-select:disabled{opacity:.4;cursor:not-allowed}
+
+/* ----------------------------------------------------------------
+   Unified Model Selector (C1) — onglets [Texte/Image/Recherche]
+   Wrapper visuel autour des 3 selects natifs (source de vérité).
+   ---------------------------------------------------------------- */
+.ums{display:flex;flex-direction:column;gap:6px;flex:0 1 auto;min-width:240px;max-width:560px}
+.ums-tabs{display:flex;gap:2px;border-bottom:1px solid var(--border-light)}
+.ums-tab{
+    background:transparent;border:none;
+    color:var(--text-muted);
+    padding:6px 12px;
+    cursor:pointer;
+    font-family:'Outfit',sans-serif;
+    font-size:.72rem;
+    font-weight:500;
+    letter-spacing:.04em;
+    border-bottom:2px solid transparent;
+    transition:color .15s,border-color .15s,background .15s;
+    display:inline-flex;align-items:center;gap:6px;
+    border-radius:6px 6px 0 0;
+}
+.ums-tab:hover{color:var(--accent);background:var(--accent-soft)}
+.ums-tab.active{color:var(--accent);border-bottom-color:var(--accent);background:var(--accent-soft)}
+.ums-tab-icon{font-size:.95rem;line-height:1}
+.ums-tab-label{white-space:nowrap}
+.ums-panels{position:relative;display:flex;align-items:center}
+.ums-panel{display:none;align-items:center;gap:8px;width:100%;flex-wrap:wrap}
+.ums-panel.active{display:flex}
+@media (max-width:768px){
+    .ums{min-width:0;flex:1 1 100%;max-width:100%}
+    .ums-tabs{gap:0;width:100%}
+    .ums-tab{flex:1;justify-content:center;padding:5px 6px;font-size:.66rem}
+    .ums-tab-label{display:none}
+    .ums-tab-icon{font-size:1.1rem}
+}
+
 .token-bar{display:flex;justify-content:space-between;padding:5px 28px;font-size:.66rem;color:var(--text-muted);border-top:1px solid var(--border-light);letter-spacing:.02em}
 #token-info,#cost-info{font-variant-numeric:tabular-nums;font-family:'JetBrains Mono',monospace}
 
