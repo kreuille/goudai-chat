@@ -1857,6 +1857,22 @@ body.login-page::after {
     }
 }
 
+/* Fix spacing modale Config v2 (PR7) — onglet Cles API.
+   Sans cela, le <label OPENAI> apparaissait colle au <a>Obtenir une cle --></a>
+   precedent (les deux sont inline par defaut dans la modale). */
+.config-tab-panel .sp-modal-label {
+    display: block;
+    margin-top: 14px;
+    margin-bottom: 4px;
+}
+.config-tab-panel .sp-modal-label:first-child {
+    margin-top: 0;
+}
+.config-tab-panel .apikey-link {
+    display: block;
+    margin-top: 6px;
+}
+
 /* Bouton toggle du right panel - fixed top-right (symetrique du #sidebar-toggle a gauche) */
 .right-panel-toggle {
     position: fixed;
