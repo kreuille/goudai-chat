@@ -58,6 +58,14 @@ const AUDIO_SETTINGS = {
     roleOptimizeModel: 'claude-sonnet-4-5-20250929'
 };
 
+// C4: pré-chargement voix Web Speech API (Chrome les charge async).
+// On déclenche getVoices() au boot et on ré-écoute voiceschanged pour
+// que la première lecture system trouve déjà la voix fr-FR.
+if ('speechSynthesis' in window) {
+    try { speechSynthesis.getVoices(); } catch {}
+    speechSynthesis.addEventListener('voiceschanged', () => { try { speechSynthesis.getVoices(); } catch {} });
+}
+
 async function loadAudioSettingsFromServer() {
     try {
         const res = await fetch(`${KIRO_API}/api/user/preferences`, { credentials: 'include' });
@@ -2198,6 +2206,12 @@ function addMessage(role, content, citations, generationTime, thinking) {
         }
 
         function ttsDoSpeak() {
+            // C4: provider 'system' → Web Speech API (gratuit, pas de blob).
+            const provider = (typeof AUDIO_SETTINGS !== 'undefined' && AUDIO_SETTINGS.ttsProvider) || 'openai';
+            if (provider === 'system') {
+                ttsDoSpeakSystem();
+                return;
+            }
             ttsGenerate((blob) => {
                 if (ttsCachedUrl) URL.revokeObjectURL(ttsCachedUrl);
                 ttsCachedUrl = URL.createObjectURL(blob);
@@ -2213,7 +2227,50 @@ function addMessage(role, content, citations, generationTime, thinking) {
             });
         }
 
+        // C4: lecture via Web Speech API (provider 'system' = navigateur).
+        // currentTtsAudio reçoit un stub avec .pause() qui appelle
+        // speechSynthesis.cancel() — le bouton arrêt global continue de marcher.
+        function ttsDoSpeakSystem() {
+            if (!('speechSynthesis' in window)) {
+                alert('La synthèse vocale du système n\'est pas disponible dans ce navigateur.');
+                return;
+            }
+            const text = ttsGetText();
+            if (!text) return;
+            speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'fr-FR';
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            const voices = speechSynthesis.getVoices();
+            const frVoice = voices.find(v => v.lang === 'fr-FR') || voices.find(v => v.lang.startsWith('fr'));
+            if (frVoice) utterance.voice = frVoice;
+
+            ttsIcon.innerHTML = iconStop;
+            ttsBtn.title = 'Arrêter la lecture';
+
+            const stub = {
+                _isSystem: true,
+                pause: () => speechSynthesis.cancel(),
+                currentTime: 0
+            };
+            currentTtsAudio = stub;
+
+            const cleanup = () => {
+                if (currentTtsAudio === stub) currentTtsAudio = null;
+                ttsReset();
+            };
+            utterance.onend = cleanup;
+            utterance.onerror = cleanup;
+            speechSynthesis.speak(utterance);
+        }
+
         function ttsDoSave() {
+            const provider = (typeof AUDIO_SETTINGS !== 'undefined' && AUDIO_SETTINGS.ttsProvider) || 'openai';
+            if (provider === 'system') {
+                alert('La synthèse vocale système ne permet pas d\'enregistrer un fichier audio. Choisissez un provider cloud (OpenAI…) dans Configuration › Audio.');
+                return;
+            }
             ttsGenerate((blob) => {
                 ttsReset();
                 const url = URL.createObjectURL(blob);
