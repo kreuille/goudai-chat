@@ -1391,6 +1391,28 @@ const EDITEUR_LABELS = {
 };
 const EDITEUR_ORDER = ['openai', 'anthropic', 'google', 'mistral', 'perplexity', 'local'];
 
+// R6 design system: ProviderMark — petit badge geometrique avec un glyph
+// (pas un vrai logo, evite les copyright). Couleur teintee selon le hue
+// du provider, accord avec design-system.jsx PROVIDERS.
+const PROVIDER_MARKS = {
+    openai:     { glyph: 'O', hue: 158 },
+    anthropic:  { glyph: 'A', hue: 28  },
+    google:     { glyph: 'G', hue: 220 },
+    mistral:    { glyph: 'M', hue: 35  },
+    grok:       { glyph: 'X', hue: 0   },
+    deepseek:   { glyph: 'D', hue: 250 },
+    perplexity: { glyph: 'P', hue: 190 },
+    zai:        { glyph: 'Z', hue: 280 },
+    local:      { glyph: 'L', hue: 270 },
+    openrouter: { glyph: 'R', hue: 30  }
+};
+function providerMarkHtml(editeur) {
+    const p = PROVIDER_MARKS[editeur] || { glyph: '?', hue: 270 };
+    // Couleurs derivees : fond clair en mode light, fond fonce en mode dark
+    // (geres via CSS .provider-mark + var(--provider-hue) inline)
+    return `<span class="provider-mark" style="--provider-hue:${p.hue}">${p.glyph}</span>`;
+}
+
 // Tooltip partagé pour les infos modèle
 const _tooltip = document.createElement('div');
 _tooltip.id = 'custom-select-tooltip';
@@ -1602,6 +1624,8 @@ function populateCustomSelect(selectEl, models, tarifFn) {
                 }
             }
             html += `<div class="custom-select-option" data-value="${m.id}" title="${(m.description||'').replace(/"/g,'&quot;')}">`;
+            // R6: ProviderMark badge devant le nom (design system)
+            html += providerMarkHtml(m.editeur);
             html += `<div class="custom-select-option-text">`;
             html += `<span class="custom-select-option-name">${m.label}</span>`;
             if (priceStr) html += `<span class="custom-select-option-price">${priceStr}</span>`;
@@ -4919,13 +4943,26 @@ window.updateImageParamsVisibility = updateImageParamsVisibility;
         const q = (query || '').toLowerCase().trim();
         const items = [];
 
+        // R6: SVG line-art (stroke 1.5) au lieu d'emojis pour rester coherent
+        // avec le design system (Icon library design-system.jsx).
+        const SVG = {
+            plus:    '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+            settings:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+            theme:   '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18"/></svg>',
+            help:    '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>',
+            chart:   '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+            chat:    '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+            user:    '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+            sparkle: '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 6.8L21 11l-6.6 2.2L12 20l-2.4-6.8L3 11l6.6-2.2z"/></svg>'
+        };
+
         // Actions rapides
         const actions = [
-            { icon: '+', label: t('Nouvelle conversation', 'New conversation'), meta: 'Action', run: () => document.getElementById('new-chat-btn')?.click() },
-            { icon: '⚙', label: t('Ouvrir Configuration', 'Open Settings'), meta: 'Action', run: () => document.getElementById('config-btn')?.click() },
-            { icon: '🌓', label: t('Basculer le thème', 'Toggle theme'), meta: 'Action', run: () => document.getElementById('theme-toggle')?.click() },
-            { icon: '?', label: t('Ouvrir la FAQ', 'Open FAQ'), meta: 'Action', run: () => document.getElementById('faq-btn')?.click() },
-            { icon: '↗', label: t('Voir le dashboard', 'Open dashboard'), meta: 'Action', run: () => document.getElementById('dashboard-btn')?.click() }
+            { icon: SVG.plus,     label: t('Nouvelle conversation', 'New conversation'), meta: 'Action', run: () => document.getElementById('new-chat-btn')?.click() },
+            { icon: SVG.settings, label: t('Ouvrir Configuration', 'Open Settings'),     meta: 'Action', run: () => document.getElementById('config-btn')?.click() },
+            { icon: SVG.theme,    label: t('Basculer le thème', 'Toggle theme'),         meta: 'Action', run: () => document.getElementById('theme-toggle')?.click() },
+            { icon: SVG.help,     label: t('Ouvrir la FAQ', 'Open FAQ'),                 meta: 'Action', run: () => document.getElementById('faq-btn')?.click() },
+            { icon: SVG.chart,    label: t('Voir le dashboard', 'Open dashboard'),       meta: 'Action', run: () => document.getElementById('dashboard-btn')?.click() }
         ];
         actions.forEach(a => {
             if (!q || a.label.toLowerCase().includes(q)) items.push({ group: t('Actions', 'Actions'), ...a });
@@ -4938,7 +4975,7 @@ window.updateImageParamsVisibility = updateImageParamsVisibility;
                 if (!q || title.toLowerCase().includes(q)) {
                     items.push({
                         group: t('Conversations', 'Conversations'),
-                        icon: '💬', label: title,
+                        icon: SVG.chat, label: title,
                         meta: c.model || '',
                         run: () => { window.loadConversation && window.loadConversation(fname); }
                     });
@@ -4952,7 +4989,7 @@ window.updateImageParamsVisibility = updateImageParamsVisibility;
                 if (!q || (sp.nom || '').toLowerCase().includes(q)) {
                     items.push({
                         group: t('Rôles', 'Roles'),
-                        icon: '◐', label: sp.nom || 'Sans nom',
+                        icon: SVG.user, label: sp.nom || 'Sans nom',
                         meta: 'Role',
                         run: () => { /* selectionner ce role */
                             const sel = document.getElementById('sp-select');
@@ -4969,7 +5006,7 @@ window.updateImageParamsVisibility = updateImageParamsVisibility;
                 if (!q || (m.label || '').toLowerCase().includes(q) || (m.id || '').toLowerCase().includes(q)) {
                     items.push({
                         group: t('Modèles texte', 'Text models'),
-                        icon: 'T', label: m.label,
+                        icon: SVG.sparkle, label: m.label,
                         meta: m.editeur || '',
                         run: () => {
                             const sel = document.getElementById('model-select');

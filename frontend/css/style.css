@@ -766,11 +766,26 @@ body.sidebar-locked{overflow:hidden}
 .custom-select-provider { border-top: 1px solid rgba(255,255,255,0.06); }
 .custom-select-provider:first-child { border-top: none; }
 .custom-select-group { padding: 6px 12px 2px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.3); }
-.custom-select-option { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; cursor: pointer; font-size: 12px; color: var(--text, #f0e6c8); transition: background 0.12s; }
+.custom-select-option { display: flex; align-items: center; gap: 8px; justify-content: flex-start; padding: 8px 12px; cursor: pointer; font-size: 12px; color: var(--text); transition: background 0.12s; }
 .custom-select-option:hover, .custom-select-option.selected { background: var(--accent-soft); color: var(--accent); }
-.custom-select-option--empty { padding: 8px 12px; font-size: 12px; color: var(--text-muted, #888); cursor: pointer; }
-.custom-select-option--empty:hover { background: rgba(255,255,255,0.05); }
-.custom-select-option-text { display: flex; flex-direction: column; gap: 1px; flex: 1; }
+.custom-select-option--empty { padding: 8px 12px; font-size: 12px; color: var(--text-muted); cursor: pointer; }
+.custom-select-option--empty:hover { background: var(--bg-hover); }
+.custom-select-option-text { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+/* R6: ProviderMark — petit badge geometrique 18px, glyph mono.
+   Couleur derivee du hue du provider via --provider-hue inline. */
+.provider-mark {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 5px;
+    background: oklch(94% 0.04 var(--provider-hue, 270));
+    color: oklch(35% 0.12 var(--provider-hue, 270));
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 600; letter-spacing: -0.02em;
+    flex-shrink: 0;
+}
+body.dark .provider-mark {
+    background: oklch(28% 0.05 var(--provider-hue, 270));
+    color: oklch(80% 0.10 var(--provider-hue, 270));
+}
 .custom-select-option-name { font-weight: 500; }
 .custom-select-option-price { font-size: 10px; }
 body:not(.dark) .custom-select-option-price { color: rgba(0,0,0,0.45); }
@@ -1650,7 +1665,7 @@ html, body {
 }
 .theme-choice:hover {
     border-color: var(--accent);
-    background: rgba(196, 136, 30, 0.04);
+    background: var(--accent-soft);
 }
 .theme-choice input[type="radio"] {
     accent-color: var(--accent);
@@ -1661,6 +1676,12 @@ html, body {
     color: var(--accent);
     font-weight: 600;
 }
+/* R6: SVG inline icons dans les labels (theme + lang choice) */
+.theme-choice span { display: inline-flex; align-items: center; gap: 8px; }
+.theme-choice .ico { color: var(--text-secondary); flex-shrink: 0; }
+.theme-choice input[type="radio"]:checked ~ span .ico { color: var(--accent); }
+/* R6: cmd-palette icon SVG centre dans la pastille */
+.cmd-palette-item-icon svg { display: block; }
 
 @media (max-width: 600px) {
     .config-tabs { font-size: 0.72rem; }
