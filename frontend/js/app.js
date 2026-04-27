@@ -4586,3 +4586,63 @@ window.updateImageParamsVisibility = updateImageParamsVisibility;
     window.toggleRightPanel = toggleRightPanel;
 })();
 
+// ─────────── FAQ (Kiro v3 - PR8) ───────────
+// Modale autonome avec onglets (General/Usage/Problemes) + items collapsible.
+// Donnees statiques chargees depuis frontend/js/faq.js (FAQ_CATEGORIES + FAQ_DATA).
+(function() {
+    const overlay   = document.getElementById('faq-modal-overlay');
+    const tabsEl    = document.getElementById('faq-tabs');
+    const container = document.getElementById('faq-container');
+    const closeBtn  = document.getElementById('faq-modal-close');
+    const triggerBtn = document.getElementById('faq-btn');
+    if (!overlay || !tabsEl || !container || !triggerBtn || typeof FAQ_CATEGORIES === 'undefined') return;
+
+    let activeCat = FAQ_CATEGORIES[0].id;
+
+    function renderTabs() {
+        tabsEl.innerHTML = '';
+        for (const cat of FAQ_CATEGORIES) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'faq-tab' + (cat.id === activeCat ? ' active' : '');
+            btn.textContent = cat.label;
+            btn.addEventListener('click', () => { activeCat = cat.id; renderTabs(); renderItems(); });
+            tabsEl.appendChild(btn);
+        }
+    }
+    function renderItems() {
+        container.innerHTML = '';
+        const items = FAQ_DATA.filter(i => i.category === activeCat);
+        if (items.length === 0) {
+            container.innerHTML = '<p class="rp-placeholder">Aucune question dans cette catégorie pour l\u2019instant.</p>';
+            return;
+        }
+        for (const item of items) {
+            const wrap = document.createElement('div');
+            wrap.className = 'faq-item';
+            const q = document.createElement('button');
+            q.type = 'button';
+            q.className = 'faq-question';
+            q.textContent = item.question;
+            const a = document.createElement('div');
+            a.className = 'faq-answer';
+            // Reponse contient du HTML (strong, br, code...) -> innerHTML safe car contenu statique de faq.js
+            a.innerHTML = item.answer;
+            q.addEventListener('click', () => wrap.classList.toggle('open'));
+            wrap.appendChild(q);
+            wrap.appendChild(a);
+            container.appendChild(wrap);
+        }
+    }
+    function openFaq() {
+        renderTabs();
+        renderItems();
+        overlay.style.display = 'flex';
+    }
+    function closeFaq() { overlay.style.display = 'none'; }
+
+    triggerBtn.addEventListener('click', openFaq);
+    closeBtn.addEventListener('click', closeFaq);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeFaq(); });
+})();
+

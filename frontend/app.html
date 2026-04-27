@@ -17,7 +17,7 @@
     <meta name="apple-mobile-web-app-title" content="GoudAI Chat">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
 
-    <link rel="stylesheet" href="css/style.css?v=6">
+    <link rel="stylesheet" href="css/style.css?v=7">
     <link rel="stylesheet" href="css/canvas.css?v=43">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <!-- Apply dark mode before paint -->
@@ -96,6 +96,9 @@
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Configuration
             </button>
             <button id="theme-toggle" class="sidebar-bottom-btn" title="Changer le thème">&#9788; Thème clair</button>
+            <button id="faq-btn" class="sidebar-bottom-btn" title="Questions fréquentes">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> FAQ
+            </button>
             <input type="file" id="import-file-input" accept=".json" hidden>
         </div>
     </aside>
@@ -468,13 +471,26 @@
         <img id="lightbox-img" class="lightbox-img" src="" alt="">
     </div>
 
+    <!-- Modale FAQ (Kiro v3 - PR8). Triggered par #faq-btn dans la sidebar. -->
+    <div id="faq-modal-overlay" class="sp-modal-overlay" style="display:none">
+        <div class="sp-modal faq-modal">
+            <h3>Questions fréquentes</h3>
+            <div id="faq-tabs" class="faq-tabs"></div>
+            <div id="faq-container" class="faq-container"></div>
+            <div class="sp-modal-actions">
+                <button id="faq-modal-close" class="sp-modal-btn sp-modal-btn-cancel">Fermer</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="models.js"></script>
+    <script src="js/faq.js?v=1"></script>
     <script src="js/auth.js"></script>
     <script src="js/api.js?v=5"></script>
     <script src="js/filemanager.js"></script>
-    <script src="js/app.js?v=87"></script>
+    <script src="js/app.js?v=88"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
