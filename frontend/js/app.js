@@ -882,13 +882,16 @@ const sidebarToggle = document.getElementById('sidebar-toggle');
 const sidebar = document.getElementById('sidebar');
 
 // C3: helpers fermeture sidebar mobile (utilises par overlay click,
-// ESC, et redimensionnement passe desktop).
+// ESC, redimensionnement passe desktop, et le bouton X dans la sidebar).
 function closeMobileSidebar() {
     sidebar.classList.remove('open');
     const overlay = document.getElementById('_sidebar_overlay');
     if (overlay) overlay.classList.remove('active');
     document.body.classList.remove('sidebar-locked');
 }
+// Bouton X de la sidebar (visible uniquement <=768px via CSS) -> ferme propre.
+const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
+if (sidebarCloseBtn) sidebarCloseBtn.addEventListener('click', closeMobileSidebar);
 
 function ensureSidebarOverlay() {
     let overlay = document.getElementById('_sidebar_overlay');
