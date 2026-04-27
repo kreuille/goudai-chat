@@ -278,6 +278,20 @@ let mediaRecorder = null;
 let micChunks = [];
 let micStartTime = null;
 let webSearchEnabled = false;
+
+// --- Web search constantes (Kiro v3 - PR10) ---
+// Editeurs qui supportent la recherche web nativement (tools/web_search côté API).
+const WEB_SEARCH_EDITEURS = ['openai', 'anthropic', 'google'];
+const WEB_SEARCH_TOOLTIPS = {
+    openai:    'Recherche web OpenAI · 0,01 $ / requête',
+    anthropic: 'Recherche web Anthropic · 0,01 $ / requête',
+    google:    'Recherche web Google (Gemini) · gratuit jusqu\u2019à 5000 req./jour'
+};
+// Coût fixe par requête (en USD).
+const WEB_SEARCH_COST_PER_REQ      = { openai: 0.01, anthropic: 0.01, google: 0 };
+// Coût additionnel par citation (Grok facture par source). Vide pour l'instant.
+const WEB_SEARCH_COST_PER_CITATION = {};
+
 let originalPromptBeforeEnhance = null;
 let isEnhancing = false;
 
@@ -810,9 +824,44 @@ sidebarToggle.addEventListener('click', () => {
 // --- Toggle recherche web ---
 webSearchToggle.addEventListener('click', () => {
     webSearchEnabled = !webSearchEnabled;
-    webSearchToggle.classList.toggle('active', webSearchEnabled);
-    webSearchToggle.title = webSearchEnabled ? 'Recherche web activée' : 'Recherche web';
+    updateWebSearchBtn();
 });
+
+// --- Web search visibilité + coût (Kiro v3 - PR10) ---
+// updateWebSearchBtn() est appelée :
+//   - au boot (pour initialiser la visibilité)
+//   - à chaque changement de modèle (modelSelect change)
+//   - au toggle du bouton (sync visuel)
+function updateWebSearchBtn() {
+    if (!webSearchToggle) return;
+    const editeur = currentModel ? (typeof getModelEditeur === 'function' ? getModelEditeur(currentModel) : null) : null;
+    const supports = editeur && WEB_SEARCH_EDITEURS.includes(editeur);
+    if (supports) {
+        webSearchToggle.style.display = '';
+        webSearchToggle.classList.toggle('active', webSearchEnabled);
+        const tooltip = WEB_SEARCH_TOOLTIPS[editeur] || 'Recherche web';
+        webSearchToggle.title = webSearchEnabled ? `${tooltip} · activée` : tooltip;
+    } else {
+        webSearchToggle.style.display = 'none';
+        webSearchToggle.classList.remove('active');
+        webSearchEnabled = false;
+        webSearchToggle.title = 'Recherche web';
+    }
+}
+
+// Calcule le coût d'une recherche web selon le provider et le nombre de citations.
+// Renvoie 0 si la recherche web était désactivée OU si le provider n'est pas supporté.
+function calcWebSearchCost(modelId, citations) {
+    if (!webSearchEnabled) return 0;
+    const editeur = (typeof getModelEditeur === 'function') ? getModelEditeur(modelId) : null;
+    if (!editeur || !WEB_SEARCH_EDITEURS.includes(editeur)) return 0;
+    let cost = WEB_SEARCH_COST_PER_REQ[editeur] || 0;
+    const perCitation = WEB_SEARCH_COST_PER_CITATION[editeur];
+    if (perCitation && citations && citations.length) {
+        cost += citations.length * perCitation;
+    }
+    return cost;
+}
 
 // --- Amélioration du prompt ---
 const enhanceIconDefault = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8L19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2L19 5"/><path d="M11 6.2L9.7 5"/><path d="M11 11.8L9.7 13"/><path d="M2 21l9-9"/></svg>';
@@ -1388,6 +1437,7 @@ initConfig().then(async () => {
     populateImageModelSelect();
     populateSearchModelSelect();
     updateTokenDisplay();
+    updateWebSearchBtn();
     refreshConvList();
     refreshCatBar();
     await importDefaultSystemPrompts();
@@ -1452,6 +1502,7 @@ modelSelect.addEventListener('change', () => {
         document.getElementById('image-format-select').style.display = 'none';
     }
     const newModel = currentModel || currentImageModel || currentSearchModel;
+    updateWebSearchBtn();
     if (conversationStarted && prevModel && newModel && prevModel !== newModel) {
         addModelSwitch(prevModel, newModel);
     }
@@ -1480,6 +1531,7 @@ imageModelSelect.addEventListener('change', () => {
         imgFormatSelect.style.display = 'none';
     }
     const newModel = currentModel || currentImageModel || currentSearchModel;
+    updateWebSearchBtn();
     if (conversationStarted && prevModel && newModel && prevModel !== newModel) {
         addModelSwitch(prevModel, newModel);
     }
@@ -1503,6 +1555,7 @@ searchModelSelect.addEventListener('change', () => {
         document.getElementById('image-format-select').style.display = 'none';
     }
     const newModel = currentModel || currentImageModel || currentSearchModel;
+    updateWebSearchBtn();
     if (conversationStarted && prevModel && newModel && prevModel !== newModel) {
         addModelSwitch(prevModel, newModel);
     }
@@ -2291,6 +2344,12 @@ function regenerateLastResponse() {
                         segCost = (usage.input_tokens / 1_000_000) * segTarif.inputPer1M + (usage.output_tokens / 1_000_000) * segTarif.outputPer1M;
                         totalCost += segCost;
                     }
+                    // Coût recherche web (PR10) : tarif par requête + citations selon provider
+                    const wsCost = calcWebSearchCost(regenTextModel, citations);
+                    if (wsCost > 0) {
+                        totalCost += wsCost;
+                        segCost += wsCost;
+                    }
                     addCostForModel(regenTextModel, usage.input_tokens, usage.output_tokens, segCost);
                 }
                 updateTokenDisplay(); saveConversation(); addRegenBtn();
@@ -2630,6 +2689,12 @@ function sendMessage() {
                         segCost = (usage.input_tokens / 1_000_000) * segTarif.inputPer1M
                                 + (usage.output_tokens / 1_000_000) * segTarif.outputPer1M;
                         totalCost += segCost;
+                    }
+                    // Coût recherche web (PR10) : tarif par requête + citations selon provider
+                    const wsCost = calcWebSearchCost(activeTextModel, citations);
+                    if (wsCost > 0) {
+                        totalCost += wsCost;
+                        segCost += wsCost;
                     }
                     addCostForModel(activeTextModel, usage.input_tokens, usage.output_tokens, segCost);
                 }
