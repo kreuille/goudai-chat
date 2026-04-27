@@ -1,0 +1,62 @@
+{
+  "version": "1.0",
+  "derniere_maj": "2026-04-27T08:50:00Z",
+  "phases": {
+    "phase1": {
+      "label": "Corrections immédiates",
+      "status": "in_progress",
+      "taches": {
+        "1_1_duplicate_btn": "done",
+        "1_2_version_badge": "todo",
+        "1_3_logo_coherent": "todo",
+        "1_4_inline_styles_auth": "todo",
+        "1_5_css_index_html": "todo"
+      }
+    },
+    "phase2": {
+      "label": "Custom select unifié",
+      "status": "todo",
+      "taches": {
+        "2_1_composant_css": "todo",
+        "2_2_composant_js": "todo",
+        "2_3_integration_html": "todo",
+        "2_4_suppression_anciens_selects": "todo"
+      }
+    },
+    "phase3": {
+      "label": "Budget UI",
+      "status": "done",
+      "taches": {
+        "3_1_html_modale": "done",
+        "3_2_overlay_alerte": "done",
+        "3_3_saveBudgetSettings_serveur": "done",
+        "3_4_loadBudgetFromServer": "done"
+      }
+    },
+    "phase4": {
+      "label": "Responsive mobile",
+      "status": "todo",
+      "taches": {
+        "4_1_sidebar_overlay": "todo",
+        "4_2_right_panel_mobile": "todo",
+        "4_3_model_bar_mobile": "todo",
+        "4_4_input_area_mobile": "todo"
+      }
+    },
+    "phase5": {
+      "label": "Polish & qualité code",
+      "status": "in_progress",
+      "taches": {
+        "5_1_theme_legacy_css": "todo",
+        "5_2_media_doublons": "done",
+        "5_3_api_version": "done"
+      }
+    }
+  },
+  "notes": [
+    "Phase 3 entièrement déjà couverte par PR Budget (#2) + onglet Budget de la modale Config v2 (PR7 mergée).",
+    "Phase 5.2 : 4 doublons sidebar-close-btn @media nettoyés via PR9 (toolbar inline).",
+    "Phase 5.3 : api.js?v=1 a été bumpé à v=5 lors des PRs Kiro v3.",
+    "Phase 1.1 : 4 boutons dupliqués sidebar-close-btn (lignes 38-41 d'app.html) réduits à 1 seul. Comportement HTML inchangé (les 4 portaient le même id donc seul le 1er était jamais sélectionné par getElementById)."
+  ]
+}
