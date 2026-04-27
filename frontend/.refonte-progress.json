@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "derniere_maj": "2026-04-27T09:05:00Z",
+  "derniere_maj": "2026-04-27T09:15:00Z",
   "phases": {
     "phase1": {
       "label": "Corrections immédiates",
@@ -9,7 +9,7 @@
         "1_1_duplicate_btn": "done",
         "1_2_version_badge": "done",
         "1_3_logo_coherent": "done",
-        "1_4_inline_styles_auth": "todo",
+        "1_4_inline_styles_auth": "done",
         "1_5_css_index_html": "todo"
       }
     },
@@ -59,6 +59,7 @@
     "Phase 5.3 : api.js?v=1 a été bumpé à v=5 lors des PRs Kiro v3.",
     "Phase 1.1 : 4 boutons dupliqués sidebar-close-btn (lignes 38-41 d'app.html) réduits à 1 seul. Comportement HTML inchangé (les 4 portaient le même id donc seul le 1er était jamais sélectionné par getElementById).",
     "Phase 1.2 : version badge 2.2 -> 2.0, alignée avec server/package.json et /health endpoint (tous bumpés à 2.0.0). Cohérent avec post-intégration Kiro v3 (10 PRs).",
-    "Phase 1.3 : logo 🦊 (fox) de la page de connexion remplacé par 🧀 (cheese), aligné avec app.html. Le 🦊 dans EMOJI_LIBRARY['Animaux'] (app.js:1057) reste — c'est une donnée de l'emoji picker, pas un logo."
+    "Phase 1.3 : logo 🦊 (fox) de la page de connexion remplacé par 🧀 (cheese), aligné avec app.html. Le 🦊 dans EMOJI_LIBRARY['Animaux'] (app.js:1057) reste — c'est une donnée de l'emoji picker, pas un logo.",
+    "Phase 1.4 : mountUserWidget() refactor BEM. ~15 inline style= + 2 onmouseover/onmouseout supprimés au profit des classes .user-widget, .user-widget__avatar (+ --initial), .user-widget__info, .user-widget__name, .user-widget__email, .user-widget__logout dans style.css."
   ]
 }

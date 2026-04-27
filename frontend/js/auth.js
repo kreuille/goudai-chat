@@ -52,35 +52,32 @@ async function logout() {
 }
 
 // ── Inject user info + logout button in sidebar ───────────────────
+// Refonte P1.4 : tous les inline styles + onmouseover/out remplaces
+// par les classes .user-widget* dans css/style.css. Ne plus modifier
+// inline ici, ajuster le CSS dedie.
 function mountUserWidget(user) {
   const sidebarBottom = document.querySelector('.sidebar-bottom');
   if (!sidebarBottom) return;
 
+  const initial = (user.username || 'U')[0].toUpperCase();
+  const avatarHtml = user.avatar_url
+    ? `<img class="user-widget__avatar" src="${user.avatar_url}" alt="">`
+    : `<div class="user-widget__avatar user-widget__avatar--initial">${initial}</div>`;
+
   const wrap = document.createElement('div');
   wrap.id = 'user-widget';
+  wrap.className = 'user-widget';
   wrap.innerHTML = `
-    <div style="
-      display:flex; align-items:center; gap:10px; padding:10px 8px 8px;
-      border-top:1px solid var(--border); margin-bottom:4px;
-    ">
-      ${user.avatar_url
-        ? `<img src="${user.avatar_url}" style="width:32px;height:32px;border-radius:50%;flex-shrink:0;border:1px solid var(--border)" alt="">`
-        : `<div style="width:32px;height:32px;border-radius:50%;background:var(--accent-soft);border:1px solid var(--accent-glow);display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:600;color:var(--accent);flex-shrink:0;">${(user.username||'U')[0].toUpperCase()}</div>`
-      }
-      <div style="min-width:0;flex:1">
-        <div style="font-size:.78rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${user.username || 'Utilisateur'}</div>
-        <div style="font-size:.65rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${user.email || ''}</div>
-      </div>
-      <button onclick="logout()" title="Déconnexion" style="
-        background:none;border:none;cursor:pointer;padding:4px;color:var(--text-muted);
-        border-radius:6px;transition:color .15s,background .15s;flex-shrink:0;
-      " onmouseover="this.style.color='var(--accent)';this.style.background='var(--accent-soft)'"
-         onmouseout="this.style.color='var(--text-muted)';this.style.background='none'">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-        </svg>
-      </button>
+    ${avatarHtml}
+    <div class="user-widget__info">
+      <div class="user-widget__name">${user.username || 'Utilisateur'}</div>
+      <div class="user-widget__email">${user.email || ''}</div>
     </div>
+    <button class="user-widget__logout" onclick="logout()" title="Déconnexion" type="button">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+    </button>
   `;
   sidebarBottom.insertBefore(wrap, sidebarBottom.firstChild);
 }
