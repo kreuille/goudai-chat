@@ -1847,6 +1847,16 @@ body.login-page::after {
     .login-page .logo { font-size: 2rem; }
 }
 
+/* Refonte P4.4 : anti-zoom iOS sur les inputs des modales (Config, FAQ, etc.).
+   Sans cela, taper dans une input <16px declenche un zoom auto Safari. */
+@media (max-width: 768px) {
+    .sp-modal-input,
+    .apikey-input,
+    .login-page input {
+        font-size: 16px !important;
+    }
+}
+
 /* Bouton toggle du right panel - fixed top-right (symetrique du #sidebar-toggle a gauche) */
 .right-panel-toggle {
     position: fixed;
