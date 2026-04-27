@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "derniere_maj": "2026-04-27T09:42:00Z",
+  "derniere_maj": "2026-04-27T09:50:00Z",
   "phases": {
     "phase1": {
       "label": "Corrections immédiates",
@@ -45,9 +45,9 @@
     },
     "phase5": {
       "label": "Polish & qualité code",
-      "status": "in_progress",
+      "status": "done",
       "taches": {
-        "5_1_theme_legacy_css": "todo",
+        "5_1_theme_legacy_css": "skipped",
         "5_2_media_doublons": "done",
         "5_3_api_version": "done"
       }
@@ -66,6 +66,9 @@
     "Phase 4.1 : sidebar.open + .sidebar-overlay déjà en place (vu dans style.css ligne 937+).",
     "Phase 4.2 : right panel mobile déjà fait par PR3 Kiro v3 (overlay full-height, transform: translateX(100%) collapsed).",
     "Phase 4.3 : .model-bar { overflow-x: auto, scrollbar hidden } déjà en place ligne 672.",
-    "Phase 4.4 : ajouté @media (max-width: 768px) { .sp-modal-input, .apikey-input, .login-page input { font-size: 16px !important } } pour empêcher le zoom auto Safari iOS quand l'utilisateur clique dans la modale Config/FAQ/login. .prompt-input avait déjà 16px en mobile."
+    "Phase 4.4 : ajouté @media (max-width: 768px) { .sp-modal-input, .apikey-input, .login-page input { font-size: 16px !important } } pour empêcher le zoom auto Safari iOS quand l'utilisateur clique dans la modale Config/FAQ/login. .prompt-input avait déjà 16px en mobile.",
+    "Phase 5.1 SKIPPED — le brief était basé sur un faux positif. Les lignes :root{--bg:#fff} et .dark{--bg:#1a1a1a} app.js:678-679 ne sont PAS du CSS legacy injecté dans le DOM principal — c'est le CSS embarqué dans la fonction d'export HTML standalone (template literal htmlDoc, ligne 671). Sans ce CSS, les fichiers HTML téléchargés perdraient tout leur style (le design system KIRO Noir Aurique de style.css n'est PAS embarqué dans le téléchargement, par design : on veut un fichier autonome lisible hors-ligne dans n'importe quel navigateur). Le supprimer casserait la feature export HTML. À garder.",
+    "Phase 5.2 : déjà fait dans PR9 Kiro v3 (4 doublons sidebar-close-btn @media supprimés).",
+    "Phase 5.3 : déjà fait, api.js bumpé à v=5 puis v=6 dans la séquence Kiro v3."
   ]
 }
