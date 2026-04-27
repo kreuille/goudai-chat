@@ -660,12 +660,16 @@ body.sidebar-locked{overflow:hidden}
   .model-label{font-size:.6rem}
   .model-select{font-size:.7rem;padding:3px 5px;max-width:130px;flex:1;min-width:70px}
   .token-bar{padding:4px 10px;font-size:.6rem;flex-wrap:wrap}
-  .input-area{padding:10px 10px calc(12px + env(safe-area-inset-bottom,0px));gap:6px}
-  .input-wrapper{max-width:100%;border-radius:14px;padding:6px 6px 6px 10px}
+  .input-area{padding:8px 8px calc(10px + env(safe-area-inset-bottom,0px));gap:6px}
+  .input-wrapper{max-width:100%;border-radius:14px;padding:5px 5px 5px 8px;gap:3px}
   .prompt-input{font-size:16px;max-height:140px}
   .input-hint{display:none}
-  .send-btn{padding:7px 14px;font-size:.8rem;border-radius:10px}
-  #attach-btn,.mic-btn,.enhance-prompt-btn,#prompt-picker-btn,.web-search-toggle{min-width:36px;min-height:36px;width:36px;height:36px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center}
+  .send-btn{padding:7px 12px;font-size:.78rem;border-radius:10px}
+  /* Mobile : compacter les boutons + masquer les redondants
+     (#enhance-prompt-btn et #prompt-picker-btn sont deja dans la toolbar
+     en-dessous, leur duplication ici reduit la zone d'ecriture). */
+  #attach-btn,.mic-btn,.web-search-toggle{min-width:32px;min-height:32px;width:32px;height:32px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  #enhance-prompt-btn,#prompt-picker-btn{display:none !important}
   .export-btns-group{bottom:auto;top:calc(52px + env(safe-area-inset-top,0px));left:auto;right:10px;flex-direction:column;gap:4px}
   .sp-modal-overlay{align-items:flex-end !important}
   .sp-modal{width:100% !important;max-width:100% !important;border-radius:20px 20px 0 0 !important;max-height:88vh;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px)) !important}
