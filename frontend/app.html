@@ -17,7 +17,7 @@
     <meta name="apple-mobile-web-app-title" content="GoudAI Chat">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
 
-    <link rel="stylesheet" href="css/style.css?v=2">
+    <link rel="stylesheet" href="css/style.css?v=3">
     <link rel="stylesheet" href="css/canvas.css?v=43">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <!-- Apply dark mode before paint -->
@@ -180,6 +180,27 @@
         <div id="canvas-panel" class="canvas-panel"></div>
     </main>
 
+    <!-- Bouton toggle du right panel (Kiro v3 - PR3). Symetrique du #sidebar-toggle a gauche. -->
+    <button id="right-panel-toggle" class="right-panel-toggle" title="Masquer le panneau de réglages" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+
+    <!-- Right panel (Kiro v3 - PR3 : structure de base, contenu rempli en PR4/PR5) -->
+    <aside id="right-panel" class="right-panel">
+        <div class="rp-panel-title">Réglages de la conversation</div>
+        <div class="rp-tabs">
+            <button class="rp-tab active" data-rp-tab="general" type="button">Général</button>
+            <button class="rp-tab" data-rp-tab="image" type="button">Image</button>
+        </div>
+        <!-- Contenu vide pour l'instant — rempli par PR4 (general) et PR5 (image) -->
+        <div class="rp-tab-content active" id="rp-tab-general">
+            <p class="rp-placeholder">Les paramètres de modèle (température, top-p, raisonnement…) arrivent dans une prochaine mise à jour.</p>
+        </div>
+        <div class="rp-tab-content" id="rp-tab-image">
+            <p class="rp-placeholder">Les paramètres image (format, qualité, modèles Flux…) arrivent dans une prochaine mise à jour.</p>
+        </div>
+    </aside>
+
     <!-- Toutes les modales identiques à index.html original -->
     <!-- Modale Rôle -->
     <div id="sp-modal-overlay" class="sp-modal-overlay" style="display:none">
@@ -314,7 +335,7 @@
     <script src="js/auth.js"></script>
     <script src="js/api.js?v=3"></script>
     <script src="js/filemanager.js"></script>
-    <script src="js/app.js?v=83"></script>
+    <script src="js/app.js?v=84"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {

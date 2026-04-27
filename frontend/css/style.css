@@ -1057,3 +1057,152 @@ html, body {
     0%   { background-position: 100% 0; }
     100% { background-position: -100% 0; }
 }
+
+/* ─────────── Right panel (Kiro v3 - PR3) ─────────── */
+/* 3e colonne du body flex (apres .sidebar et .main).
+   Contient les onglets de reglages (General, Image, etc.).
+   Contenu rempli en PR4/PR5. */
+.right-panel {
+    width: 280px;
+    min-width: 280px;
+    background: var(--bg-sidebar, #131210);
+    display: flex;
+    flex-direction: column;
+    padding: 16px 14px;
+    border-left: 1px solid var(--border, #2a2a2a);
+    transition: width 0.25s ease, min-width 0.25s ease, padding 0.2s ease, opacity 0.2s ease;
+    overflow: hidden;
+    height: 100vh;
+    height: 100dvh;
+    box-sizing: border-box;
+}
+.right-panel.collapsed {
+    width: 0;
+    min-width: 0;
+    padding: 16px 0;
+    opacity: 0;
+    border-left: none;
+}
+.rp-panel-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary, #a0a0a0);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 12px;
+    padding: 0 4px;
+}
+.rp-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--border, #2a2a2a);
+    position: relative;
+}
+.rp-tabs::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: var(--rp-tab-x, 0);
+    width: var(--rp-tab-w, 0);
+    height: 2px;
+    background: var(--accent, #c4881e);
+    transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1), width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.rp-tab {
+    flex: 1;
+    padding: 8px 0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary, #a0a0a0);
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.rp-tab.active {
+    color: var(--accent, #c4881e);
+}
+.rp-tab:hover:not(.active) {
+    color: var(--text, #e9e9e9);
+}
+.rp-tab-content {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 2px;
+}
+.rp-tab-content.active {
+    display: flex;
+    animation: rp-tab-fade-in 0.22s ease;
+}
+@keyframes rp-tab-fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.rp-placeholder {
+    color: var(--text-secondary, #a0a0a0);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    text-align: center;
+    margin: 24px 8px;
+    padding: 16px;
+    border: 1px dashed var(--border, #2a2a2a);
+    border-radius: 8px;
+}
+
+/* Bouton toggle du right panel - fixed top-right (symetrique du #sidebar-toggle a gauche) */
+.right-panel-toggle {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 100;
+    width: 36px;
+    height: 36px;
+    padding: 6px;
+    background: var(--bg-card, #1e1e1e);
+    border: 1px solid var(--border, #2a2a2a);
+    border-radius: 8px;
+    color: var(--text-secondary, #a0a0a0);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, border-color 0.15s, background 0.15s, right 0.25s ease;
+}
+.right-panel-toggle:hover {
+    color: var(--accent, #c4881e);
+    border-color: var(--accent-glow, var(--accent, #c4881e));
+    background: var(--accent-soft, rgba(196, 136, 30, 0.08));
+}
+.right-panel-toggle.collapsed {
+    /* Quand le panel est ferme, le bouton reste a droite (le panel a width:0). */
+    right: 14px;
+}
+
+/* Mobile : right panel devient overlay full-height (pas full-width pour rester fonctionnel) */
+@media (max-width: 768px) {
+    .right-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        height: 100vh;
+        height: 100dvh;
+        z-index: 90;
+        box-shadow: -8px 0 24px rgba(0, 0, 0, 0.4);
+    }
+    .right-panel.collapsed {
+        transform: translateX(100%);
+        opacity: 1;
+    }
+    .right-panel-toggle {
+        top: calc(8px + env(safe-area-inset-top, 0px));
+        right: 10px;
+        z-index: 150;
+        width: 38px;
+        height: 38px;
+        padding: 6px;
+        border-radius: 9px;
+    }
+}
