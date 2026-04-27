@@ -17,7 +17,7 @@
     <meta name="apple-mobile-web-app-title" content="GoudAI Chat">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
 
-    <link rel="stylesheet" href="css/style.css?v=15">
+    <link rel="stylesheet" href="css/style.css?v=16">
     <link rel="stylesheet" href="css/canvas.css?v=43">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <!-- Apply dark mode before paint -->
@@ -45,7 +45,8 @@
     </button>
     <aside class="sidebar" id="sidebar">
         <button id="sidebar-close-btn" onclick="document.getElementById('sidebar').classList.remove('open');document.getElementById('_sidebar_overlay')?.remove();" style="display:none;position:absolute;top:12px;right:12px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--text);z-index:9999;padding:4px 8px;border-radius:6px;">×</button>
-        <h1 class="sidebar-title"><span class="sidebar-logo">🧀 GoudAI Chat <span class="version-badge">2.0</span></h1>
+        <!-- R1 rebrand : monogramme G geometrique a la place du fromage -->
+        <h1 class="sidebar-title"><span class="sidebar-logo"><svg class="goud-mark" width="22" height="22" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="3" width="26" height="26" rx="7" fill="currentColor"/><path d="M21 12h-5a4 4 0 0 0-4 4v0a4 4 0 0 0 4 4h2v-3h-2v-2h5v5a4 4 0 0 1-4 4h-1a7 7 0 0 1-7-7v0a7 7 0 0 1 7-7h5z" fill="var(--bg-sidebar)"/></svg> goudai <span class="version-badge">2.0</span></span></h1>
         <a href="https://www.linkedin.com/in/arnaudguedou/" target="_blank" rel="noopener noreferrer" class="sidebar-credit">by Arnaud Guedou</a>
         <button id="new-chat-btn" class="new-chat-btn">+ Nouvelle conversation</button>
 
