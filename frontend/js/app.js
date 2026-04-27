@@ -4900,3 +4900,160 @@ window.updateImageParamsVisibility = updateImageParamsVisibility;
     overlay.addEventListener('click', (e) => { if (e.target === overlay) closeFaq(); });
 })();
 
+// === R4 redesign: Command palette ⌘K ====================================
+// Recherche fuzzy dans : conversations, roles, prompts enregistres, modeles
+// texte/image/recherche, et 5 actions rapides. Navigation clavier.
+(function() {
+    const overlay = document.getElementById('cmd-palette-overlay');
+    const input = document.getElementById('cmd-palette-input');
+    const results = document.getElementById('cmd-palette-results');
+    if (!overlay || !input || !results) return;
+
+    let activeIndex = 0;
+    let currentItems = [];
+
+    function buildItems(query) {
+        const q = (query || '').toLowerCase().trim();
+        const items = [];
+
+        // Actions rapides
+        const actions = [
+            { icon: '+', label: t('Nouvelle conversation', 'New conversation'), meta: 'Action', run: () => document.getElementById('new-chat-btn')?.click() },
+            { icon: '⚙', label: t('Ouvrir Configuration', 'Open Settings'), meta: 'Action', run: () => document.getElementById('config-btn')?.click() },
+            { icon: '🌓', label: t('Basculer le thème', 'Toggle theme'), meta: 'Action', run: () => document.getElementById('theme-toggle')?.click() },
+            { icon: '?', label: t('Ouvrir la FAQ', 'Open FAQ'), meta: 'Action', run: () => document.getElementById('faq-btn')?.click() },
+            { icon: '↗', label: t('Voir le dashboard', 'Open dashboard'), meta: 'Action', run: () => document.getElementById('dashboard-btn')?.click() }
+        ];
+        actions.forEach(a => {
+            if (!q || a.label.toLowerCase().includes(q)) items.push({ group: t('Actions', 'Actions'), ...a });
+        });
+
+        // Conversations
+        if (typeof window.conversations === 'object' && window.conversations) {
+            Object.entries(window.conversations).slice(0, 50).forEach(([fname, c]) => {
+                const title = c.title || fname;
+                if (!q || title.toLowerCase().includes(q)) {
+                    items.push({
+                        group: t('Conversations', 'Conversations'),
+                        icon: '💬', label: title,
+                        meta: c.model || '',
+                        run: () => { window.loadConversation && window.loadConversation(fname); }
+                    });
+                }
+            });
+        }
+
+        // Roles
+        if (Array.isArray(window.systemPrompts)) {
+            window.systemPrompts.slice(0, 30).forEach(sp => {
+                if (!q || (sp.nom || '').toLowerCase().includes(q)) {
+                    items.push({
+                        group: t('Rôles', 'Roles'),
+                        icon: '◐', label: sp.nom || 'Sans nom',
+                        meta: 'Role',
+                        run: () => { /* selectionner ce role */
+                            const sel = document.getElementById('sp-select');
+                            if (sel) { sel.value = sp.nom; sel.dispatchEvent(new Event('change')); }
+                        }
+                    });
+                }
+            });
+        }
+
+        // Modeles
+        if (Array.isArray(window.MODELS)) {
+            window.MODELS.slice(0, 50).forEach(m => {
+                if (!q || (m.label || '').toLowerCase().includes(q) || (m.id || '').toLowerCase().includes(q)) {
+                    items.push({
+                        group: t('Modèles texte', 'Text models'),
+                        icon: 'T', label: m.label,
+                        meta: m.editeur || '',
+                        run: () => {
+                            const sel = document.getElementById('model-select');
+                            if (sel) { sel.value = m.id; sel.dispatchEvent(new Event('change')); }
+                        }
+                    });
+                }
+            });
+        }
+
+        return items.slice(0, 80);
+    }
+
+    function render() {
+        if (currentItems.length === 0) {
+            results.innerHTML = `<div class="cmd-palette-empty">${t('Aucun résultat', 'No results')}</div>`;
+            return;
+        }
+        let lastGroup = null;
+        let html = '';
+        currentItems.forEach((item, i) => {
+            if (item.group !== lastGroup) {
+                html += `<div class="cmd-palette-group">${item.group}</div>`;
+                lastGroup = item.group;
+            }
+            const escLabel = (item.label || '').replace(/</g, '&lt;');
+            const escMeta = (item.meta || '').replace(/</g, '&lt;');
+            html += `<div class="cmd-palette-item ${i === activeIndex ? 'active' : ''}" data-cmd-index="${i}">
+                <span class="cmd-palette-item-icon">${item.icon || '•'}</span>
+                <span class="cmd-palette-item-text">${escLabel}</span>
+                ${escMeta ? `<span class="cmd-palette-item-meta">${escMeta}</span>` : ''}
+            </div>`;
+        });
+        results.innerHTML = html;
+        // Scroll dans la vue
+        const active = results.querySelector('.cmd-palette-item.active');
+        if (active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest' });
+    }
+
+    function refresh() {
+        currentItems = buildItems(input.value);
+        if (activeIndex >= currentItems.length) activeIndex = 0;
+        render();
+    }
+
+    function openPalette() {
+        overlay.style.display = 'flex';
+        input.value = '';
+        activeIndex = 0;
+        refresh();
+        setTimeout(() => input.focus(), 0);
+    }
+    function closePalette() {
+        overlay.style.display = 'none';
+    }
+    function runActive() {
+        const item = currentItems[activeIndex];
+        if (!item) return;
+        closePalette();
+        try { item.run(); } catch (e) { console.error('cmd-palette:', e); }
+    }
+
+    // Raccourcis globaux
+    document.addEventListener('keydown', (e) => {
+        const isMac = /mac|ipod|iphone|ipad/i.test(navigator.platform);
+        const cmd = isMac ? e.metaKey : e.ctrlKey;
+        if (cmd && (e.key === 'k' || e.key === 'K')) {
+            e.preventDefault();
+            if (overlay.style.display === 'flex') closePalette(); else openPalette();
+        }
+        if (overlay.style.display !== 'flex') return;
+        if (e.key === 'Escape') { e.preventDefault(); closePalette(); }
+        if (e.key === 'ArrowDown') { e.preventDefault(); activeIndex = Math.min(currentItems.length - 1, activeIndex + 1); render(); }
+        if (e.key === 'ArrowUp')   { e.preventDefault(); activeIndex = Math.max(0, activeIndex - 1); render(); }
+        if (e.key === 'Enter')     { e.preventDefault(); runActive(); }
+    });
+
+    input.addEventListener('input', () => { activeIndex = 0; refresh(); });
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closePalette(); });
+    results.addEventListener('click', (e) => {
+        const row = e.target.closest('.cmd-palette-item');
+        if (!row) return;
+        activeIndex = parseInt(row.dataset.cmdIndex || '0', 10);
+        runActive();
+    });
+
+    // Expose pour debug / autres triggers
+    window.openCmdPalette = openPalette;
+})();
+
