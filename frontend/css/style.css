@@ -551,8 +551,12 @@ body::before {
 /* ================================================================
    MOBILE
    ================================================================ */
-.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:200;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
-.sidebar-overlay.active{display:block}
+/* C3: backdrop sombre + blur, fade animé. z-index 299 pour passer
+   sous la sidebar (z-index 300+ en mobile) mais au-dessus du reste. */
+.sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:299;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);opacity:0;visibility:hidden;transition:opacity .25s ease,visibility .25s ease;pointer-events:none}
+.sidebar-overlay.active{opacity:1;visibility:visible;pointer-events:auto}
+/* C3: lock du scroll body quand la sidebar mobile est ouverte */
+body.sidebar-locked{overflow:hidden}
 
 @media(max-width:768px){
   body{padding-bottom:env(safe-area-inset-bottom,0px)}
