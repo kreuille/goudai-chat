@@ -105,13 +105,41 @@ async function saveAudioSettings(settings) {
 // Au démarrage : charger les réglages depuis le serveur (auth requise → silencieux si 401).
 loadAudioSettingsFromServer();
 
-function saveBudgetSettings() {
-    // Budget non implementé dans GoudAI - stub
+// --- Budget : sync serveur ---
+// `loadBudgetSettings()` / `saveBudgetSettings()` (définies plus bas) restent
+// synchrones et opèrent sur le cache localStorage `goudai-budget`. Les helpers
+// async ci-dessous synchronisent ce cache avec preferences_enc serveur (clé `budget`).
+async function loadBudgetFromServer() {
+    try {
+        const res = await fetch(`${KIRO_API}/api/user/preferences`, { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const b = data?.preferences?.budget;
+        if (b && typeof b === 'object') {
+            localStorage.setItem('goudai-budget', JSON.stringify(b));
+        }
+    } catch (err) {
+        console.warn('[budget] load from server failed:', err.message);
+    }
 }
 
-function loadBudgetSettings() {
-    try { return JSON.parse(localStorage.getItem('goudai-budget') || '{}'); } catch { return {}; }
+async function saveBudgetToServer(budgetObj) {
+    try {
+        const getRes = await fetch(`${KIRO_API}/api/user/preferences`, { credentials: 'include' });
+        const current = getRes.ok ? ((await getRes.json()).preferences || {}) : {};
+        await fetch(`${KIRO_API}/api/user/preferences`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ ...current, budget: budgetObj })
+        });
+    } catch (err) {
+        console.warn('[budget] sync to server failed:', err.message);
+    }
 }
+
+// Au démarrage : hydrater le cache localStorage depuis le serveur.
+loadBudgetFromServer();
 
 
 // ── Safe getElementById : évite les crashes sur éléments absents ──
@@ -3669,7 +3697,10 @@ function saveBudgetSettings() {
     const enabled = (document.getElementById('budget-enabled')||{style:{},textContent:'',className:'',checked:false,value:''}).checked;
     const period = (document.getElementById('budget-period')||{style:{},textContent:'',className:'',checked:false,value:''}).value;
     const amount = parseFloat((document.getElementById('budget-amount')||{style:{},textContent:'',className:'',checked:false,value:''}).value) || 0;
-    localStorage.setItem('goudai-budget', JSON.stringify({ enabled, period, amount }));
+    const budgetObj = { enabled, period: period || 'month', amount };
+    localStorage.setItem('goudai-budget', JSON.stringify(budgetObj));
+    // Sync serveur (fire-and-forget) — l'écriture localStorage suffit pour la suite immédiate.
+    saveBudgetToServer(budgetObj);
 }
 
 function toggleBudgetSettings() {

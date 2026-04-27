@@ -17,7 +17,7 @@
     <meta name="apple-mobile-web-app-title" content="GoudAI Chat">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
 
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=1">
     <link rel="stylesheet" href="css/canvas.css?v=43">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <!-- Apply dark mode before paint -->
@@ -249,6 +249,41 @@
             <label class="sp-modal-label" for="apikey-deepseek">DeepSeek</label>
             <div class="apikey-field"><input type="password" id="apikey-deepseek" class="sp-modal-input apikey-input" placeholder="sk-..."><button type="button" class="apikey-toggle-vis" data-target="apikey-deepseek" title="Afficher/masquer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
             <a class="apikey-link" href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener noreferrer">Obtenir une clé DeepSeek &rarr;</a>
+
+            <!-- Section Budget -->
+            <div class="config-section">
+                <h4 class="config-section-title">Budget</h4>
+                <p class="apikey-intro">Définissez un budget maximum. Une alerte s'affichera en cas de dépassement.</p>
+                <div class="audio-setting-row">
+                    <label class="audio-setting-label" for="budget-enabled">Activer le suivi</label>
+                    <label class="budget-toggle">
+                        <input type="checkbox" id="budget-enabled">
+                        <span class="budget-toggle-slider"></span>
+                    </label>
+                </div>
+                <div id="budget-settings" style="display:none">
+                    <div class="audio-setting-row">
+                        <label class="audio-setting-label" for="budget-period">Période</label>
+                        <select id="budget-period" class="audio-setting-select budget-field">
+                            <option value="day">Jour</option>
+                            <option value="week">Semaine</option>
+                            <option value="month" selected>Mois</option>
+                        </select>
+                    </div>
+                    <div class="audio-setting-row">
+                        <label class="audio-setting-label" for="budget-amount">Montant max ($)</label>
+                        <input type="number" id="budget-amount" class="sp-modal-input budget-field" min="0" step="0.5" placeholder="10.00">
+                    </div>
+                    <div id="budget-preview" class="budget-preview" style="display:none">
+                        <p class="budget-preview-label">Consommation période actuelle</p>
+                        <div class="budget-progress-bar">
+                            <div class="budget-progress-fill" id="budget-fill"></div>
+                        </div>
+                        <p class="budget-progress-text" id="budget-text"></p>
+                    </div>
+                </div>
+            </div>
+
             <div class="sp-modal-actions">
                 <button id="apikeys-modal-cancel" class="sp-modal-btn sp-modal-btn-cancel">Annuler</button>
                 <button id="apikeys-modal-save" class="sp-modal-btn sp-modal-btn-save">Enregistrer</button>
@@ -288,13 +323,22 @@
         <img id="lightbox-img" class="lightbox-img" src="" alt="">
     </div>
 
+    <!-- Alerte budget dépassé -->
+    <div id="budget-alert-overlay" class="budget-alert-overlay" style="display:none">
+        <div class="budget-alert-popup">
+            <div class="budget-alert-icon">⚠️</div>
+            <div id="budget-alert-text" class="budget-alert-text"></div>
+            <button id="budget-alert-close" class="budget-alert-close">Compris</button>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="models.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/api.js?v=1"></script>
     <script src="js/filemanager.js"></script>
-    <script src="js/app.js?v=80"></script>
+    <script src="js/app.js?v=81"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
