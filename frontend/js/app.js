@@ -1505,6 +1505,11 @@ modelSelect.addEventListener('change', () => {
     const newModel = currentModel || currentImageModel || currentSearchModel;
     updateWebSearchBtn();
     updateEffortSection(currentModel);
+    updateImageParamsVisibility(currentImageModel);
+    // Auto-switch right panel sur l'onglet Image quand on selectionne un modele image (Kiro v3 - PR5)
+    if (currentImageModel && typeof window.setRightPanelTab === 'function') {
+        window.setRightPanelTab('image');
+    }
     if (conversationStarted && prevModel && newModel && prevModel !== newModel) {
         addModelSwitch(prevModel, newModel);
     }
@@ -1535,6 +1540,11 @@ imageModelSelect.addEventListener('change', () => {
     const newModel = currentModel || currentImageModel || currentSearchModel;
     updateWebSearchBtn();
     updateEffortSection(currentModel);
+    updateImageParamsVisibility(currentImageModel);
+    // Auto-switch right panel sur l'onglet Image quand on selectionne un modele image (Kiro v3 - PR5)
+    if (currentImageModel && typeof window.setRightPanelTab === 'function') {
+        window.setRightPanelTab('image');
+    }
     if (conversationStarted && prevModel && newModel && prevModel !== newModel) {
         addModelSwitch(prevModel, newModel);
     }
@@ -1560,6 +1570,11 @@ searchModelSelect.addEventListener('change', () => {
     const newModel = currentModel || currentImageModel || currentSearchModel;
     updateWebSearchBtn();
     updateEffortSection(currentModel);
+    updateImageParamsVisibility(currentImageModel);
+    // Auto-switch right panel sur l'onglet Image quand on selectionne un modele image (Kiro v3 - PR5)
+    if (currentImageModel && typeof window.setRightPanelTab === 'function') {
+        window.setRightPanelTab('image');
+    }
     if (conversationStarted && prevModel && newModel && prevModel !== newModel) {
         addModelSwitch(prevModel, newModel);
     }
@@ -2306,7 +2321,8 @@ function regenerateLastResponse() {
             },
             regenRefImages,
             currentAbortController.signal,
-            document.getElementById('image-format-select').value
+            document.getElementById('image-format-select').value,
+            (typeof getImageParams === 'function') ? getImageParams() : undefined
         );
     } else {
         let fullResponse = '';
@@ -2633,7 +2649,8 @@ function sendMessage() {
             },
             referenceImages,
             currentAbortController.signal,
-            document.getElementById('image-format-select').value
+            document.getElementById('image-format-select').value,
+            (typeof getImageParams === 'function') ? getImageParams() : undefined
         );
     } else {
         // --- Mode texte / recherche (streaming) ---
@@ -4400,6 +4417,61 @@ if (_rpResetBtn) {
         }
     });
 }
+
+// ─────────── Right panel - onglet Image : format buttons + getImageParams (Kiro v3 - PR5) ───────────
+// Format buttons : square / portrait / landscape (un seul actif a la fois)
+document.querySelectorAll('.image-format-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.image-format-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    });
+});
+
+// Sliders OpenRouter (steps + guidance) : sync valeur affichee
+['or-steps', 'or-guidance'].forEach(id => {
+    const range = document.getElementById('rp-image-' + id + '-range');
+    const value = document.getElementById('rp-image-' + id + '-value');
+    if (!range || !value) return;
+    range.addEventListener('input', () => {
+        value.textContent = range.step.includes('.') ? parseFloat(range.value).toFixed(1) : range.value;
+    });
+});
+
+// Adapte la visibilite des sections selon le provider du modele image courant.
+// Sections marquees data-providers='openai' visibles seulement pour modeles OpenAI, etc.
+function updateImageParamsVisibility(modelId) {
+    const editeur = modelId ? (typeof getImageModelEditeur === 'function' ? getImageModelEditeur(modelId) : null) : null;
+    const sections = document.querySelectorAll('#rp-tab-image [data-providers]');
+    const hint = document.getElementById('rp-image-no-model-hint');
+    sections.forEach(s => {
+        const supported = s.dataset.providers.split(',').map(p => p.trim()).includes(editeur);
+        s.classList.toggle('rp-section-disabled', !supported);
+    });
+    // Le hint "selectionnez un modele image" cache si un modele image est actif
+    if (hint) hint.style.display = editeur ? 'none' : '';
+}
+
+// Collect tous les params image (provider-aware)
+function getImageParams() {
+    const out = {};
+    // Format (commun) : recupere le data-format du bouton actif
+    const activeFormatBtn = document.querySelector('.image-format-btn.active');
+    if (activeFormatBtn) out.format = activeFormatBtn.dataset.format;
+    // OpenAI : quality
+    const qSel = document.getElementById('rp-image-quality-select');
+    if (qSel) out.quality = qSel.value;
+    // Google Gemini : size
+    const sizeSel = document.getElementById('rp-image-gemini-size-select');
+    if (sizeSel) out.imageSize = sizeSel.value;
+    // OpenRouter (Flux) : steps + guidance
+    const stepsRange = document.getElementById('rp-image-or-steps-range');
+    if (stepsRange) out.steps = parseInt(stepsRange.value);
+    const guidanceRange = document.getElementById('rp-image-or-guidance-range');
+    if (guidanceRange) out.guidance = parseFloat(guidanceRange.value);
+    return out;
+}
+window.getImageParams = getImageParams;
+window.updateImageParamsVisibility = updateImageParamsVisibility;
 
 // ─────────── Right panel (Kiro v3 - PR3) ───────────
 // Wiring du panneau lateral droit (3e colonne) avec onglets Général / Image.
