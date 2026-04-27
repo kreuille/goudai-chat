@@ -207,28 +207,114 @@ function formatMessagesForProvider(conversationHistory, editeur) {
     });
 }
 
+// --- Parser <think>...</think> (Kiro v3 - PR2) ---
+// Factory reutilisable : extrait les blocs <think>...</think> du flux streame
+// (DeepSeek R1, GLM-5/5.1, certains Mistral/Perplexity). Renvoie 2 fonctions :
+//   process(delta) -> { text, events: [{type:'thinking'|'chunk', data}] }
+//   flush()        -> events residuels (a appeler en fin de stream)
+// Note PR2 : la fonction est definie ici pour usage futur (PR de refactor des
+// parsers inline dans streamPerplexity/streamOpenAICompat). Pas de call-site
+// modifie dans cette PR pour eviter tout changement de comportement.
+function createThinkTagParser() {
+    let inThinkBlock = false;
+    let thinkBuffer = '';
+    function process(delta) {
+        const events = [];
+        let text = '';
+        thinkBuffer += delta;
+        while (thinkBuffer.length > 0) {
+            if (inThinkBlock) {
+                const endIdx = thinkBuffer.indexOf('</think>');
+                if (endIdx !== -1) {
+                    events.push({ type: 'thinking', data: thinkBuffer.substring(0, endIdx) });
+                    thinkBuffer = thinkBuffer.substring(endIdx + 8);
+                    inThinkBlock = false;
+                } else {
+                    if (thinkBuffer.length > 8) {
+                        events.push({ type: 'thinking', data: thinkBuffer.substring(0, thinkBuffer.length - 8) });
+                        thinkBuffer = thinkBuffer.substring(thinkBuffer.length - 8);
+                    }
+                    break;
+                }
+            } else {
+                const startIdx = thinkBuffer.indexOf('<think>');
+                if (startIdx !== -1) {
+                    if (startIdx > 0) text += thinkBuffer.substring(0, startIdx);
+                    thinkBuffer = thinkBuffer.substring(startIdx + 7);
+                    inThinkBlock = true;
+                } else {
+                    if (thinkBuffer.length > 7) {
+                        text += thinkBuffer.substring(0, thinkBuffer.length - 7);
+                        thinkBuffer = thinkBuffer.substring(thinkBuffer.length - 7);
+                    }
+                    break;
+                }
+            }
+        }
+        return { text, events };
+    }
+    function flush() {
+        const events = [];
+        if (thinkBuffer && !inThinkBlock) events.push({ type: 'chunk', data: thinkBuffer });
+        thinkBuffer = '';
+        return events;
+    }
+    return { process, flush };
+}
+
+// --- Reasoning effort utilities (Kiro v3 - PR2) ---
+// Identifie quels modeles supportent un parametre 'reasoning_effort' et donne
+// les niveaux disponibles. Utilises par PR4 (UI selecteur) et les PRs ulterieures
+// qui wireront effectivement le parametre dans les requetes API par provider.
+function supportsReasoningEffort(modelId) {
+    if (!modelId) return false;
+    // OpenAI : famille o1/o3/o4 + GPT-5
+    if (/^(o1|o3|o4|gpt-5)/.test(modelId)) return true;
+    // Anthropic : Claude Opus / Sonnet (adaptive thinking sur Opus 4.7+)
+    if (/^claude-(opus|sonnet)/.test(modelId)) return true;
+    // Google : Gemini Pro/Flash + Gemma 4
+    if (/^(gemini-(?:pro|.*-pro|.*-flash)|gemma-4)/.test(modelId)) return true;
+    // DeepSeek (toggle binaire : effort=high swap vers deepseek-reasoner)
+    if (/^deepseek-(chat|reasoner)/.test(modelId)) return true;
+    // Grok 4.20 reasoning (toggle binaire)
+    if (/^grok-4\.20.*reasoning/.test(modelId)) return true;
+    // GLM-5 / 5.1 (toggle binaire)
+    if (/^glm-5(\.|$)/.test(modelId)) return true;
+    return false;
+}
+function getEffortLevels(modelId) {
+    if (!supportsReasoningEffort(modelId)) return [];
+    // Toggle binaire (haut/bas) pour DeepSeek/Grok/GLM (pas de granularite intermediaire native)
+    if (/^(deepseek|grok|glm-5)/.test(modelId)) return ['low', 'high'];
+    // Anthropic, OpenAI, Google : niveaux pleins
+    return ['minimal', 'low', 'medium', 'high'];
+}
+
 // --- Dispatcher : appeler le bon provider selon le modèle ---
-function streamModel(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal) {
+// Signature etendue (Kiro v3 - PR2) : modelParams (optional) accepte les options
+// avancees comme reasoning_effort, temperature, top_p... Pour l'instant les
+// providers ne lisent pas encore modelParams (sera wired par PRs ulterieures).
+function streamModel(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal, modelParams) {
     const editeur = getModelEditeur(modelId) || getSearchModelEditeur(modelId);
     switch (editeur) {
         case 'openai':
-            return streamOpenAI(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal);
+            return streamOpenAI(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal, modelParams);
         case 'anthropic':
-            return streamAnthropic(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal);
+            return streamAnthropic(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal, modelParams);
         case 'google':
-            return streamGoogle(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal);
+            return streamGoogle(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, webSearch, onThinkingChunk, signal, modelParams);
         case 'perplexity':
-            return streamPerplexity(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal);
+            return streamPerplexity(modelId, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, modelParams);
         case 'mistral':
-            return streamOpenAICompat(modelId, 'https://api.mistral.ai/v1/chat/completions', API_KEYS.mistral, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal);
+            return streamOpenAICompat(modelId, 'https://api.mistral.ai/v1/chat/completions', API_KEYS.mistral, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, false, modelParams);
         case 'grok':
-            return streamOpenAICompat(modelId, 'https://api.x.ai/v1/chat/completions', API_KEYS.grok, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal);
+            return streamOpenAICompat(modelId, 'https://api.x.ai/v1/chat/completions', API_KEYS.grok, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, false, modelParams);
         case 'deepseek':
-            return streamOpenAICompat(modelId, 'https://api.deepseek.com/v1/chat/completions', API_KEYS.deepseek, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, true);
+            return streamOpenAICompat(modelId, 'https://api.deepseek.com/v1/chat/completions', API_KEYS.deepseek, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, true, modelParams);
         case 'zai':
             // Zhipu AI (GLM family). Compatible OpenAI Chat Completions.
             // hasThinkTags=true: les modeles GLM-5/5.1 emettent <think>...</think> en mode raisonnement.
-            return streamOpenAICompat(modelId, 'https://api.z.ai/api/paas/v4/chat/completions', API_KEYS.zai, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, true);
+            return streamOpenAICompat(modelId, 'https://api.z.ai/api/paas/v4/chat/completions', API_KEYS.zai, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, true, modelParams);
         default:
             onError(new Error(`Éditeur inconnu pour le modèle ${modelId}`));
     }
