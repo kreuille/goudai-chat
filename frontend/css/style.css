@@ -989,23 +989,71 @@ html, body {
     }
 }
 
-/* Bouton fermer sidebar mobile */
-@media (max-width: 768px) {
-    #sidebar-close-btn {
-        display: block !important;
-    }
+/* ─────────── Composer toolbar (Kiro v3 - PR9) ─────────── */
+/* Ligne d'actions visibles juste sous le composer (#input-wrapper).
+   Affiche 1 a 2 boutons selon updatePromptToolbar() :
+   - mode insert  : bouton "Inserer un prompt" (textarea vide)
+   - mode enhance : "Ameliorer" + "Enregistrer" (texte present, pre-enhance)
+   - mode revert  : "Revenir" (variante destructive) + "Enregistrer" (post-enhance) */
+.composer-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 6px 0 4px;
+    min-height: 30px;
+    flex-wrap: wrap;
+}
+.prompt-toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: 1px solid var(--border, #2a2a2a);
+    color: var(--text-secondary, #a0a0a0);
+    cursor: pointer;
+    padding: 5px 12px;
+    border-radius: 16px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+    line-height: 1.2;
+}
+.prompt-toolbar-btn svg {
+    stroke: currentColor;
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+.prompt-toolbar-btn:hover:not(:disabled) {
+    color: var(--accent, #c4881e);
+    border-color: var(--accent, #c4881e);
+    background: rgba(196, 136, 30, 0.08);
+}
+.prompt-toolbar-btn:hover:not(:disabled) svg {
+    opacity: 1;
+}
+.prompt-toolbar-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.prompt-toolbar-btn.revert {
+    color: #f87171;
+    border-color: #f87171;
+}
+.prompt-toolbar-btn.revert:hover:not(:disabled) {
+    background: rgba(248, 113, 113, 0.08);
 }
 
-/* Bouton fermer sidebar mobile */
-@media (max-width: 768px) {
-    #sidebar-close-btn {
-        display: block !important;
-    }
+/* Animation shimmer sur le textarea pendant l'amelioration en cours */
+.prompt-input.enhancing {
+    background: linear-gradient(90deg,
+        var(--bg-input, #1a1a1a) 0%,
+        rgba(196, 136, 30, 0.15) 50%,
+        var(--bg-input, #1a1a1a) 100%);
+    background-size: 200% 100%;
+    animation: enhanceShimmer 1.6s linear infinite;
 }
-
-/* Bouton fermer sidebar mobile */
-@media (max-width: 768px) {
-    #sidebar-close-btn {
-        display: block !important;
-    }
+@keyframes enhanceShimmer {
+    0%   { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
 }

@@ -213,6 +213,12 @@ const micBtn = document.getElementById('mic-btn');
 const webSearchToggle = document.getElementById('web-search-toggle');
 const enhancePromptBtn = document.getElementById('enhance-prompt-btn');
 
+// Toolbar inline du composer (Kiro v3 - PR9)
+const composerToolbar  = document.getElementById('composer-toolbar');
+const toolbarInsertBtn = document.getElementById('toolbar-insert-btn');
+const toolbarEnhanceBtn = document.getElementById('toolbar-enhance-btn');
+const toolbarSaveBtn   = document.getElementById('toolbar-save-btn');
+
 const promptPickerBtn = document.getElementById('prompt-picker-btn');
 const promptPickerDropdown = document.getElementById('prompt-picker-dropdown');
 const prListEl = document.getElementById('pr-list');
@@ -826,6 +832,8 @@ function updateEnhanceBtn() {
         enhancePromptBtn.classList.remove('revert');
         enhancePromptBtn.title = 'Améliorer le prompt';
     }
+    // Sync la toolbar inline (PR9 Kiro v3) — refletes le nouvel etat enhance
+    if (typeof updatePromptToolbar === 'function') updatePromptToolbar();
 }
 
 enhancePromptBtn.addEventListener('click', async () => {
@@ -852,6 +860,7 @@ enhancePromptBtn.addEventListener('click', async () => {
     updateEnhanceBtn();
     const savedText = text;
     promptInput.value = '';
+    promptInput.classList.add('enhancing');
 
     enhancePrompt(
         savedText,
@@ -861,6 +870,7 @@ enhancePromptBtn.addEventListener('click', async () => {
             promptInput.style.height = Math.min(promptInput.scrollHeight, 200) + 'px';
         },
         () => {
+            promptInput.classList.remove('enhancing');
             originalPromptBeforeEnhance = savedText;
             isEnhancing = false;
             updateEnhanceBtn();
@@ -869,6 +879,7 @@ enhancePromptBtn.addEventListener('click', async () => {
         },
         (err) => {
             console.error('Erreur amélioration prompt:', err);
+            promptInput.classList.remove('enhancing');
             promptInput.value = savedText;
             showModelAlert(err.message || 'Erreur lors de l\'amélioration du prompt.');
             isEnhancing = false;
@@ -878,6 +889,55 @@ enhancePromptBtn.addEventListener('click', async () => {
         }
     );
 });
+
+// --- Composer toolbar (Kiro v3 - PR9) ---
+// Machine d'etat 3 modes (insert / enhance / revert) qui controle quels
+// boutons toolbar sont visibles selon l'etat du textarea.
+function updatePromptToolbar() {
+    if (!composerToolbar) return;
+    const hasText = promptInput.value.trim() !== '';
+    const showInsert  = !hasText && originalPromptBeforeEnhance === null;
+    const showEnhance = hasText && originalPromptBeforeEnhance === null;
+    const showRevert  = originalPromptBeforeEnhance !== null;
+    const showSave    = hasText || showRevert;
+
+    toolbarInsertBtn.style.display  = showInsert  ? 'inline-flex' : 'none';
+    toolbarSaveBtn.style.display    = showSave    ? 'inline-flex' : 'none';
+
+    if (showRevert) {
+        toolbarEnhanceBtn.style.display = 'inline-flex';
+        toolbarEnhanceBtn.classList.add('revert');
+        toolbarEnhanceBtn.title = 'Revenir au prompt original';
+        toolbarEnhanceBtn.querySelector('.btn-label').textContent = 'Revenir au prompt original';
+    } else if (showEnhance) {
+        toolbarEnhanceBtn.style.display = 'inline-flex';
+        toolbarEnhanceBtn.classList.remove('revert');
+        toolbarEnhanceBtn.title = isEnhancing ? 'Amélioration en cours…' : 'Améliorer le prompt';
+        toolbarEnhanceBtn.querySelector('.btn-label').textContent = isEnhancing ? 'Amélioration…' : 'Améliorer le prompt';
+        toolbarEnhanceBtn.disabled = isEnhancing;
+    } else {
+        toolbarEnhanceBtn.style.display = 'none';
+    }
+}
+
+// Les boutons toolbar delegent aux handlers existants (UX coherente).
+toolbarInsertBtn.addEventListener('click', () => promptPickerBtn.click());
+toolbarEnhanceBtn.addEventListener('click', () => enhancePromptBtn.click());
+toolbarSaveBtn.addEventListener('click', () => {
+    const text = promptInput.value.trim();
+    if (!text) return;
+    // Ouvre la modale "Nouveau prompt" pre-remplie avec le texte courant.
+    prEditingFilename = null;
+    prModalTitle.textContent = 'Nouveau prompt';
+    prModalNom.value = '';
+    prModalContenu.value = text;
+    prModalOverlay.style.display = 'flex';
+    prModalNom.focus();
+});
+
+// Re-affiche la toolbar a chaque modification du textarea + au boot.
+promptInput.addEventListener('input', updatePromptToolbar);
+updatePromptToolbar();
 
 // --- Catégories ---
 
