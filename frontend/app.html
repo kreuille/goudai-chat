@@ -17,7 +17,7 @@
     <meta name="apple-mobile-web-app-title" content="GoudAI Chat">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
 
-    <link rel="stylesheet" href="css/style.css?v=18">
+    <link rel="stylesheet" href="css/style.css?v=19">
     <link rel="stylesheet" href="css/canvas.css?v=44">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <!-- Apply dark mode before paint -->
@@ -137,14 +137,15 @@
         <div class="model-bar" id="model-bar">
             <div class="ums" id="ums">
                 <div class="ums-tabs" role="tablist">
+                    <!-- R6: SVG line-art au lieu d'emojis 💬🎨🔍 -->
                     <button type="button" class="ums-tab active" data-ums-tab="text" role="tab" aria-selected="true">
-                        <span class="ums-tab-icon">💬</span><span class="ums-tab-label" data-i18n-fr="Texte" data-i18n-en="Text">Texte</span>
+                        <span class="ums-tab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span><span class="ums-tab-label" data-i18n-fr="Texte" data-i18n-en="Text">Texte</span>
                     </button>
                     <button type="button" class="ums-tab" data-ums-tab="image" role="tab" aria-selected="false">
-                        <span class="ums-tab-icon">🎨</span><span class="ums-tab-label" data-i18n-fr="Image" data-i18n-en="Image">Image</span>
+                        <span class="ums-tab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg></span><span class="ums-tab-label" data-i18n-fr="Image" data-i18n-en="Image">Image</span>
                     </button>
                     <button type="button" class="ums-tab" data-ums-tab="search" role="tab" aria-selected="false">
-                        <span class="ums-tab-icon">🔍</span><span class="ums-tab-label" data-i18n-fr="Recherche" data-i18n-en="Search">Recherche</span>
+                        <span class="ums-tab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><span class="ums-tab-label" data-i18n-fr="Recherche" data-i18n-en="Search">Recherche</span>
                     </button>
                 </div>
                 <div class="ums-panels">
@@ -525,10 +526,11 @@
             <div class="config-tab-panel" data-config-panel="appearance">
                 <p class="apikey-intro" data-i18n-fr="Ajustez l'apparence de l'interface." data-i18n-en="Customize the interface appearance.">Ajustez l'apparence de l'interface.</p>
                 <label class="sp-modal-label" data-i18n-fr="Thème" data-i18n-en="Theme">Thème</label>
+                <!-- R6: SVG line-art design system (stroke 1.5) au lieu d'emojis -->
                 <div class="theme-choice-row">
-                    <label class="theme-choice"><input type="radio" name="theme-choice" value="dark"><span data-i18n-fr="🌙 Sombre" data-i18n-en="🌙 Dark">🌙 Sombre</span></label>
-                    <label class="theme-choice"><input type="radio" name="theme-choice" value="light"><span data-i18n-fr="☀️ Clair" data-i18n-en="☀️ Light">☀️ Clair</span></label>
-                    <label class="theme-choice"><input type="radio" name="theme-choice" value="auto"><span data-i18n-fr="🖥 Auto (système)" data-i18n-en="🖥 Auto (system)">🖥 Auto (système)</span></label>
+                    <label class="theme-choice"><input type="radio" name="theme-choice" value="dark"><span><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><span data-i18n-fr="Sombre" data-i18n-en="Dark">Sombre</span></span></label>
+                    <label class="theme-choice"><input type="radio" name="theme-choice" value="light"><span><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><span data-i18n-fr="Clair" data-i18n-en="Light">Clair</span></span></label>
+                    <label class="theme-choice"><input type="radio" name="theme-choice" value="auto"><span><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span data-i18n-fr="Auto (système)" data-i18n-en="Auto (system)">Auto (système)</span></span></label>
                 </div>
                 <!-- R3: selecteur de langue (FR / EN / Bilingue) -->
                 <label class="sp-modal-label" style="margin-top:18px" data-i18n-fr="Langue" data-i18n-en="Language">Langue</label>
@@ -542,13 +544,13 @@
             <!-- Onglet Stats : ouvre la modale dashboard existante (deja riche, on ne duplique pas) -->
             <div class="config-tab-panel" data-config-panel="stats">
                 <p class="apikey-intro">Consultez vos statistiques d'utilisation détaillées (par modèle, par provider, par période) dans le dashboard.</p>
-                <button id="config-open-dashboard" type="button" class="sp-modal-btn sp-modal-btn-save" style="margin-top:16px">📊 Ouvrir le dashboard détaillé →</button>
+                <button id="config-open-dashboard" type="button" class="sp-modal-btn sp-modal-btn-save" style="margin-top:16px;display:inline-flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span data-i18n-fr="Ouvrir le dashboard détaillé" data-i18n-en="Open detailed dashboard">Ouvrir le dashboard détaillé</span> <span style="opacity:.7">→</span></button>
             </div>
 
             <!-- Onglet FAQ : ouvre la modale FAQ autonome (PR8) -->
             <div class="config-tab-panel" data-config-panel="faq">
                 <p class="apikey-intro">Consultez les questions fréquentes (Général, Usage, Problèmes courants).</p>
-                <button id="config-open-faq" type="button" class="sp-modal-btn sp-modal-btn-save" style="margin-top:16px">❓ Ouvrir la FAQ →</button>
+                <button id="config-open-faq" type="button" class="sp-modal-btn sp-modal-btn-save" style="margin-top:16px;display:inline-flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span data-i18n-fr="Ouvrir la FAQ" data-i18n-en="Open FAQ">Ouvrir la FAQ</span> <span style="opacity:.7">→</span></button>
             </div>
 
             <!-- Onglet Partager -->
@@ -644,7 +646,7 @@
     <script src="js/auth.js"></script>
     <script src="js/api.js?v=6"></script>
     <script src="js/filemanager.js"></script>
-    <script src="js/app.js?v=97"></script>
+    <script src="js/app.js?v=98"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
