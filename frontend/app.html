@@ -17,7 +17,7 @@
     <meta name="apple-mobile-web-app-title" content="GoudAI Chat">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
 
-    <link rel="stylesheet" href="css/style.css?v=13">
+    <link rel="stylesheet" href="css/style.css?v=14">
     <link rel="stylesheet" href="css/canvas.css?v=43">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <!-- Apply dark mode before paint -->
@@ -125,19 +125,41 @@
         </div>
 
         <div id="model-alert" class="model-alert" style="display:none">Veuillez choisir un modèle avant d'envoyer.</div>
+        <!-- Custom select unifié (C1) : 3 onglets [Texte/Image/Recherche]
+             qui exposent visuellement chacun un seul des 3 selects natifs.
+             Les selects natifs (#model-select, #image-model-select, #search-model-select)
+             restent la source de vérité — aucune adaptation des call sites. -->
         <div class="model-bar" id="model-bar">
-            <label for="model-select" class="model-label">Modèle texte :</label>
-            <select id="model-select" class="model-select"><option value="">—</option></select>
-            <label for="image-model-select" class="model-label">Modèle image :</label>
-            <select id="image-model-select" class="model-select"><option value="">—</option></select>
-            <label for="image-format-select" class="model-label" id="image-format-label" style="display:none;">Format :</label>
-            <select id="image-format-select" class="model-select" style="display:none;">
-                <option value="square">Carré</option>
-                <option value="vertical">Vertical</option>
-                <option value="horizontal">Horizontal</option>
-            </select>
-            <label for="search-model-select" class="model-label">Modèle recherche :</label>
-            <select id="search-model-select" class="model-select"><option value="">—</option></select>
+            <div class="ums" id="ums">
+                <div class="ums-tabs" role="tablist">
+                    <button type="button" class="ums-tab active" data-ums-tab="text" role="tab" aria-selected="true">
+                        <span class="ums-tab-icon">💬</span><span class="ums-tab-label">Texte</span>
+                    </button>
+                    <button type="button" class="ums-tab" data-ums-tab="image" role="tab" aria-selected="false">
+                        <span class="ums-tab-icon">🎨</span><span class="ums-tab-label">Image</span>
+                    </button>
+                    <button type="button" class="ums-tab" data-ums-tab="search" role="tab" aria-selected="false">
+                        <span class="ums-tab-icon">🔍</span><span class="ums-tab-label">Recherche</span>
+                    </button>
+                </div>
+                <div class="ums-panels">
+                    <div class="ums-panel active" data-ums-panel="text" role="tabpanel">
+                        <select id="model-select" class="model-select"><option value="">—</option></select>
+                    </div>
+                    <div class="ums-panel" data-ums-panel="image" role="tabpanel">
+                        <select id="image-model-select" class="model-select"><option value="">—</option></select>
+                        <label for="image-format-select" class="model-label" id="image-format-label" style="display:none;">Format :</label>
+                        <select id="image-format-select" class="model-select" style="display:none;">
+                            <option value="square">Carré</option>
+                            <option value="vertical">Vertical</option>
+                            <option value="horizontal">Horizontal</option>
+                        </select>
+                    </div>
+                    <div class="ums-panel" data-ums-panel="search" role="tabpanel">
+                        <select id="search-model-select" class="model-select"><option value="">—</option></select>
+                    </div>
+                </div>
+            </div>
             <span class="model-bar-spacer"></span>
             <label for="sp-select" class="model-label">Rôle :</label>
             <select id="sp-select" class="model-select"><option value="">Aucun</option></select>
@@ -589,7 +611,7 @@
     <script src="js/auth.js"></script>
     <script src="js/api.js?v=5"></script>
     <script src="js/filemanager.js"></script>
-    <script src="js/app.js?v=91"></script>
+    <script src="js/app.js?v=92"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {

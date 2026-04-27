@@ -1326,6 +1326,37 @@ document.addEventListener('mouseout', (e) => {
     if (info) _tooltip.classList.remove('visible');
 });
 
+// === Unified Model Selector (C1) =================================
+// Wrapper visuel autour des 3 selects natifs (Texte/Image/Recherche).
+// Les selects natifs restent la source de vérité — pas d'adaptation
+// des call sites. setActiveTab(tab) bascule visuellement le panel
+// affiché. Auto-switch quand un select reçoit une valeur (clic
+// utilisateur ou restore programmatique).
+function setActiveTab(tab) {
+    if (tab !== 'text' && tab !== 'image' && tab !== 'search') return;
+    document.querySelectorAll('.ums-tab').forEach(el => {
+        const a = el.dataset.umsTab === tab;
+        el.classList.toggle('active', a);
+        el.setAttribute('aria-selected', a ? 'true' : 'false');
+    });
+    document.querySelectorAll('.ums-panel').forEach(el => {
+        el.classList.toggle('active', el.dataset.umsPanel === tab);
+    });
+    // Fermer un dropdown custom-select ouvert dans un panel non actif
+    document.querySelectorAll('.ums-panel:not(.active) .custom-select.open')
+        .forEach(el => el.classList.remove('open'));
+}
+
+function initUnifiedModelSelector() {
+    document.querySelectorAll('.ums-tab').forEach(t => {
+        t.addEventListener('click', () => setActiveTab(t.dataset.umsTab));
+    });
+    // Sync initial selon quel select porte une valeur
+    if (imageModelSelect.value) setActiveTab('image');
+    else if (searchModelSelect.value) setActiveTab('search');
+    else setActiveTab('text');
+}
+
 function upgradeToCustomSelect(selectEl) {
     // Créer le DOM personnalisé
     const container = document.createElement('div');
@@ -1363,6 +1394,11 @@ function upgradeToCustomSelect(selectEl) {
             selectEl._customValue = v || '';
             updateTriggerDisplay(selectEl);
             updateActiveOption(selectEl);
+            // C1: si ce select est rattaché à un onglet UMS et qu'on
+            // pose une valeur non vide, basculer l'onglet visible.
+            if (v && selectEl._umsTab && typeof setActiveTab === 'function') {
+                setActiveTab(selectEl._umsTab);
+            }
         },
         configurable: true
     });
@@ -1498,6 +1534,11 @@ initConfig().then(async () => {
     upgradeToCustomSelect(modelSelect);
     upgradeToCustomSelect(imageModelSelect);
     upgradeToCustomSelect(searchModelSelect);
+    // C1: rattacher chaque select à son onglet UMS pour l'auto-switch
+    modelSelect._umsTab = 'text';
+    imageModelSelect._umsTab = 'image';
+    searchModelSelect._umsTab = 'search';
+    initUnifiedModelSelector();
     populateModelSelect();
     populateImageModelSelect();
     populateSearchModelSelect();
