@@ -670,6 +670,25 @@ body.sidebar-locked{overflow:hidden}
      en-dessous, leur duplication ici reduit la zone d'ecriture). */
   #attach-btn,.mic-btn,.web-search-toggle{min-width:32px;min-height:32px;width:32px;height:32px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
   #enhance-prompt-btn,#prompt-picker-btn{display:none !important}
+  /* Mobile : toolbar plus visible (sans les inline buttons elle servait
+     a peine — boutons plus larges, pleine largeur, accent-soft fond). */
+  .composer-toolbar{
+    gap:6px !important;
+    margin:6px 0 0 !important;
+    padding:0 2px;
+    width:100%;
+  }
+  .composer-toolbar .prompt-toolbar-btn{
+    flex:1 1 auto;
+    justify-content:center;
+    min-height:36px;
+    padding:7px 12px !important;
+    font-size:0.78rem !important;
+    background:var(--accent-soft);
+    border-color:var(--accent-glow) !important;
+    color:var(--accent) !important;
+  }
+  .composer-toolbar .prompt-toolbar-btn svg{opacity:1 !important}
   .export-btns-group{bottom:auto;top:calc(52px + env(safe-area-inset-top,0px));left:auto;right:10px;flex-direction:column;gap:4px}
   .sp-modal-overlay{align-items:flex-end !important}
   .sp-modal{width:100% !important;max-width:100% !important;border-radius:20px 20px 0 0 !important;max-height:88vh;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px)) !important}
