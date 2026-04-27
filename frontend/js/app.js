@@ -1164,6 +1164,42 @@ document.addEventListener('click', () => {
     document.querySelectorAll('.menu-open').forEach(b => b.classList.remove('menu-open'));
 });
 
+// --- Categories v2 - Color grid 22 couleurs (Kiro v3 - PR6) ---
+// Palette curee remplacant l'input HTML5 type=color (UX trop libre).
+const CAT_PRESET_COLORS = [
+    '#e53e3e', '#d97706', '#ca8a04', '#16a34a', '#0d9488',
+    '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7',
+    '#d946ef', '#ec4899', '#f43f5e', '#78716c', '#64748b',
+    '#059669', '#2563eb', '#7c3aed', '#c026d3', '#ea580c',
+    '#0891b2', '#b45309'
+];
+const _catColorGrid = document.getElementById('cat-color-grid');
+function populateCatColorGrid(selectedColor) {
+    if (!_catColorGrid) return;
+    _catColorGrid.innerHTML = '';
+    for (const color of CAT_PRESET_COLORS) {
+        const sw = document.createElement('button');
+        sw.type = 'button';
+        sw.className = 'cat-color-swatch';
+        sw.style.background = color;
+        sw.dataset.color = color;
+        sw.title = color;
+        if (color.toLowerCase() === (selectedColor || '').toLowerCase()) {
+            sw.classList.add('selected');
+        }
+        _catColorGrid.appendChild(sw);
+    }
+}
+if (_catColorGrid) {
+    _catColorGrid.addEventListener('click', (e) => {
+        const sw = e.target.closest('.cat-color-swatch');
+        if (!sw) return;
+        _catColorGrid.querySelectorAll('.cat-color-swatch').forEach(s => s.classList.remove('selected'));
+        sw.classList.add('selected');
+        catModalCouleur.value = sw.dataset.color; // input cache lu par le save handler
+    });
+}
+
 function openCatModal(catId) {
     editingCategoryId = catId;
     emojiPickerEl.style.display = 'none';
@@ -1175,6 +1211,7 @@ function openCatModal(catId) {
         catModalIcone.value = cat.icone;
         emojiPreview.textContent = cat.icone || '?';
         catModalCouleur.value = cat.couleur;
+        populateCatColorGrid(cat.couleur);
         catModalDelete.style.display = '';
     } else {
         catModalTitle.textContent = 'Nouvelle catégorie';
@@ -1182,6 +1219,7 @@ function openCatModal(catId) {
         catModalIcone.value = '';
         emojiPreview.textContent = '?';
         catModalCouleur.value = '#3b82f6';
+        populateCatColorGrid('#3b82f6');
         catModalDelete.style.display = 'none';
     }
     catModalOverlay.style.display = '';

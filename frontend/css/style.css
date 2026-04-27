@@ -1318,6 +1318,47 @@ html, body {
     display: none !important;
 }
 
+/* ─────────── Categories v2 - color grid 22 couleurs (Kiro v3 - PR6) ─────────── */
+.cat-color-grid {
+    display: grid;
+    grid-template-columns: repeat(11, 1fr);
+    gap: 6px;
+    margin: 6px 0 12px;
+}
+.cat-color-swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.12s, border-color 0.12s;
+    padding: 0;
+    background: transparent;
+}
+.cat-color-swatch:hover {
+    transform: scale(1.1);
+}
+.cat-color-swatch.selected {
+    border-color: var(--text, #e9e9e9);
+    box-shadow: 0 0 0 2px var(--bg, #131210), 0 0 0 4px var(--text, #e9e9e9);
+}
+.cat-color-swatch.selected::after {
+    content: '\2713';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+@media (max-width: 480px) {
+    .cat-color-grid { grid-template-columns: repeat(8, 1fr); }
+}
+
 /* Bouton toggle du right panel - fixed top-right (symetrique du #sidebar-toggle a gauche) */
 .right-panel-toggle {
     position: fixed;

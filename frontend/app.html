@@ -17,7 +17,7 @@
     <meta name="apple-mobile-web-app-title" content="GoudAI Chat">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
 
-    <link rel="stylesheet" href="css/style.css?v=5">
+    <link rel="stylesheet" href="css/style.css?v=6">
     <link rel="stylesheet" href="css/canvas.css?v=43">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <!-- Apply dark mode before paint -->
@@ -449,8 +449,11 @@
                     <div id="emoji-grid" class="emoji-grid"></div>
                 </div>
             </div>
-            <label class="sp-modal-label" for="cat-modal-couleur">Couleur</label>
-            <input type="color" id="cat-modal-couleur" class="cat-color-picker" value="#c4881e">
+            <label class="sp-modal-label">Couleur</label>
+            <!-- Color grid 22 couleurs predefinies (Kiro v3 - PR6). Populé par populateCatColorGrid(). -->
+            <div id="cat-color-grid" class="cat-color-grid"></div>
+            <!-- Input cache : conserve la valeur selectionnee pour le save handler existant -->
+            <input type="hidden" id="cat-modal-couleur" value="#3b82f6">
             <div class="sp-modal-actions">
                 <button id="cat-modal-delete" class="sp-modal-btn sp-modal-btn-cancel" style="color:#f87171;display:none">Supprimer</button>
                 <span class="sp-modal-spacer"></span>
@@ -471,7 +474,7 @@
     <script src="js/auth.js"></script>
     <script src="js/api.js?v=5"></script>
     <script src="js/filemanager.js"></script>
-    <script src="js/app.js?v=86"></script>
+    <script src="js/app.js?v=87"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
