@@ -828,23 +828,55 @@ document.querySelectorAll('.sp-toggle').forEach(toggle => {
 const sidebarToggle = document.getElementById('sidebar-toggle');
 const sidebar = document.getElementById('sidebar');
 
+// C3: helpers fermeture sidebar mobile (utilises par overlay click,
+// ESC, et redimensionnement passe desktop).
+function closeMobileSidebar() {
+    sidebar.classList.remove('open');
+    const overlay = document.getElementById('_sidebar_overlay');
+    if (overlay) overlay.classList.remove('active');
+    document.body.classList.remove('sidebar-locked');
+}
+
+function ensureSidebarOverlay() {
+    let overlay = document.getElementById('_sidebar_overlay');
+    if (overlay) return overlay;
+    overlay = document.createElement('div');
+    overlay.id = '_sidebar_overlay';
+    overlay.className = 'sidebar-overlay';
+    overlay.addEventListener('click', closeMobileSidebar);
+    document.body.appendChild(overlay);
+    return overlay;
+}
+
 sidebarToggle.addEventListener('click', () => {
     if (window.innerWidth <= 768) {
         const isOpen = sidebar.classList.toggle('open');
-        let overlay = document.getElementById('_sidebar_overlay');
+        const overlay = ensureSidebarOverlay();
         if (isOpen) {
-            if (!overlay) {
-                overlay = document.createElement('div');
-                overlay.id = '_sidebar_overlay';
-                overlay.style.cssText = 'position:fixed;inset:0;z-index:299;background:rgba(0,0,0,0.5)';
-                overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.remove(); });
-                document.body.appendChild(overlay);
-            }
-        } else { document.getElementById('_sidebar_overlay')?.remove(); }
+            overlay.classList.add('active');
+            document.body.classList.add('sidebar-locked');
+        } else {
+            overlay.classList.remove('active');
+            document.body.classList.remove('sidebar-locked');
+        }
     } else {
         const collapsed = sidebar.classList.toggle('collapsed');
         sidebarToggle.classList.toggle('collapsed', collapsed);
         sidebarToggle.title = collapsed ? 'Afficher le panneau' : 'Masquer le panneau';
+    }
+});
+
+// C3: ESC ferme la sidebar mobile
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sidebar.classList.contains('open') && window.innerWidth <= 768) {
+        closeMobileSidebar();
+    }
+});
+
+// C3: si on repasse en desktop pendant que sidebar mobile est ouverte, nettoyer
+window.addEventListener('resize', () => {
+    if (window.innerWidth > 768 && sidebar.classList.contains('open')) {
+        closeMobileSidebar();
     }
 });
 
