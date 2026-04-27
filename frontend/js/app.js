@@ -55,7 +55,7 @@ const AUDIO_SETTINGS = {
     sttProvider: 'openai',
     ttsVoice: 'coral',
     summaryModel: 'gpt-4.1-2025-04-14',
-    roleOptimizeModel: 'claude-sonnet-4-5'
+    roleOptimizeModel: 'claude-sonnet-4-5-20250929'
 };
 
 async function loadAudioSettingsFromServer() {

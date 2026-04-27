@@ -1,38 +1,53 @@
 const MODELS_DATA = {
   "text": [
-    { "id": "gpt-4.1-2025-04-14", "description": "Modèle phare OpenAI, excellent en codage et suivi d'instructions complexes.",         "label": "GPT-4.1",           "editeur": "openai",    "inputPer1M": 2,    "outputPer1M": 8 },
-    { "id": "gpt-5-mini-2025-08-07", "description": "Petit modèle rapide et économique, idéal pour les tâches simples.",       "label": "GPT-5 Mini",        "editeur": "openai",    "inputPer1M": 0.25, "outputPer1M": 2 },
-    { "id": "gpt-5.2-2025-12-11", "description": "Modèle avancé avec raisonnement amélioré et large fenêtre de contexte.",          "label": "GPT-5.2",           "editeur": "openai",    "inputPer1M": 1.75, "outputPer1M": 14 },
-    { "id": "gpt-5.4-2026-03-05", "description": "Dernière génération OpenAI, performances de pointe en raisonnement.",          "label": "GPT-5.4",           "editeur": "openai",    "inputPer1M": 2.5, "outputPer1M": 15 },
-    { "id": "claude-opus-4-5", "description": "Modèle le plus puissant d'Anthropic, excelle en analyse et tâches complexes.",             "label": "Claude Opus 4.6",   "editeur": "anthropic", "inputPer1M": 5,    "outputPer1M": 25 },
-    { "id": "claude-sonnet-4-5", "description": "Équilibre optimal performance/coût, très bon en rédaction et codage.",  "label": "Claude Sonnet 4.5", "editeur": "anthropic", "inputPer1M": 3,    "outputPer1M": 15 },
-    { "id": "claude-haiku-4-5", "description": "Modèle rapide et abordable, parfait pour les réponses courtes.",   "label": "Claude Haiku 4.5",  "editeur": "anthropic", "inputPer1M": 1,    "outputPer1M": 5 },
-    { "id": "gemini-3.1-pro-preview", "description": "Dernier modèle Pro de Google, performant en raisonnement multimodal.",      "label": "Gemini 3.1 Pro",    "editeur": "google",    "inputPer1M": 2,    "outputPer1M": 12 },
-    { "id": "gemini-2.5-pro", "description": "Modèle Pro de Google avec large fenêtre de contexte.",              "label": "Gemini 2.5 Pro",    "editeur": "google",    "inputPer1M": 1.25, "outputPer1M": 10 },
-    { "id": "mistral-large-latest", "description": "Le modèle phare et le plus performant de Mistral. Cocorico.",  "label": "Mistral Large",  "editeur": "mistral",  "inputPer1M": 2,    "outputPer1M": 6 },
-    { "id": "mistral-small-latest", "description": "Petit modèle Mistral, extrêmement rapide et économique.",  "label": "Mistral Small",  "editeur": "mistral",  "inputPer1M": 0.1,  "outputPer1M": 0.3 },
-    { "id": "codestral-latest", "description": "Modèle Mistral spécialisé dans la génération de code.",      "label": "Codestral",      "editeur": "mistral",  "inputPer1M": 0.2,  "outputPer1M": 0.6 },
-    { "id": "grok-3", "description": "Modèle phare de xAI, excellent en raisonnement.",                "label": "Grok 3",         "editeur": "grok",     "inputPer1M": 3,    "outputPer1M": 15 },
-    { "id": "grok-3-mini", "description": "Version légère de Grok 3, rapide et économique.",           "label": "Grok 3 Mini",    "editeur": "grok",     "inputPer1M": 0.3,  "outputPer1M": 0.5 },
-    { "id": "deepseek-chat", "description": "DeepSeek V3 : excellent rapport qualité/prix, performant en codage.",         "label": "DeepSeek V3",    "editeur": "deepseek", "inputPer1M": 0.27, "outputPer1M": 1.1 },
-    { "id": "deepseek-reasoner",     "label": "DeepSeek R1",    "editeur": "deepseek", "inputPer1M": 0.55, "outputPer1M": 2.19 },
-    { "id": "gemini-2.5-flash", "description": "Modèle ultra-rapide et économique de Google.",            "label": "Gemini 2.5 Flash",  "editeur": "google",    "inputPer1M": 0.3,  "outputPer1M": 2.5 }
+    { "id": "gpt-5.4-2026-03-05",          "label": "GPT-5.4",           "editeur": "openai",    "inputPer1M": 2.5, "outputPer1M": 15,  "description": "Dernière génération OpenAI, performances de pointe en raisonnement et créativité." },
+    { "id": "gpt-5.2-2025-12-11",          "label": "GPT-5.2",           "editeur": "openai",    "inputPer1M": 1.75, "outputPer1M": 14, "description": "Modèle avancé avec raisonnement amélioré et large fenêtre de contexte." },
+    { "id": "gpt-4.1-2025-04-14",         "label": "GPT-4.1",           "editeur": "openai",    "inputPer1M": 2,    "outputPer1M": 8,  "description": "Modèle phare d'OpenAI, excellent en codage et suivi d'instructions complexes." },
+    { "id": "gpt-5.4-mini-2026-03-17",     "label": "GPT-5.4 Mini",      "editeur": "openai",    "inputPer1M": 0.75, "outputPer1M": 4.5,"description": "Modèle mini le plus puissant d'OpenAI, excellent pour codage, usage d'outils et sous-agents." },
+    { "id": "gpt-5.4-nano-2026-03-17",     "label": "GPT-5.4 Nano",      "editeur": "openai",    "inputPer1M": 0.2,  "outputPer1M": 1.25,"description": "Version ultra-rapide et économique de GPT-5.4, idéale pour classification, extraction et sous-agents." },
+    { "id": "claude-opus-4-7",             "label": "Claude Opus 4.7",   "editeur": "anthropic", "inputPer1M": 5,    "outputPer1M": 25, "description": "Modèle le plus puissant d'Anthropic, excelle en analyse approfondie et tâches complexes." },
+    { "id": "claude-opus-4-6",             "label": "Claude Opus 4.6",   "editeur": "anthropic", "inputPer1M": 5,    "outputPer1M": 25, "description": "Version antérieure du modèle le plus puissant d'Anthropic, excelle en analyse approfondie et tâches complexes." },
+    { "id": "claude-sonnet-4-5-20250929",  "label": "Claude Sonnet 4.5", "editeur": "anthropic", "inputPer1M": 3,    "outputPer1M": 15, "description": "Équilibre optimal entre performance et coût, très bon en rédaction et codage." },
+    { "id": "claude-haiku-4-5-20251001",   "label": "Claude Haiku 4.5",  "editeur": "anthropic", "inputPer1M": 1,    "outputPer1M": 5,  "description": "Modèle rapide et abordable, parfait pour les réponses courtes et le traitement en masse." },
+    { "id": "gemini-3.1-pro-preview",      "label": "Gemini 3.1 Pro",    "editeur": "google",    "inputPer1M": 2,    "outputPer1M": 12, "description": "Dernier modèle Pro de Google, performant en raisonnement multimodal et long contexte." },
+    { "id": "gemini-3-flash-preview",      "label": "Gemini 3 Flash",    "editeur": "google",    "inputPer1M": 0.5,  "outputPer1M": 3.0, "description": "Dernier modèle Flash, combinant rapidité et une intelligence de pointe." },
+    { "id": "gemini-3.1-flash-lite-preview", "label": "Gemini 3.1 Flash Lite",  "editeur": "google", "inputPer1M": 0.25,  "outputPer1M": 1.5, "description": "Modèle ultra-rapide et économique de Google, bon rapport qualité-prix." },
+    { "id": "gemma-4-31b-it",             "label": "Gemma 4 (31b)",      "editeur": "google",   "inputPer1M": 0,  "outputPer1M": 0,"description": "Le modèle dense de Google, conçu pour une qualité maximale à un prix dérisoire. Temporairement gratuit." },
+    { "id": "mistral-large-latest",        "label": "Mistral Large 3",   "editeur": "mistral",   "inputPer1M": 0.5,  "outputPer1M": 1.5,  "description": "Le modèle phare et le plus performant de Mistral. Cocorico." },
+    { "id": "mistral-small-latest",        "label": "Mistral Small 4",   "editeur": "mistral",   "inputPer1M": 0.15, "outputPer1M": 0.6,  "description": "Petit modèle économique, très rapide, avec raisonnement, parfait pour les tâches simples." },
+    { "id": "ministral-8b-latest",         "label": "Ministral 8B",      "editeur": "mistral",   "inputPer1M": 0.15, "outputPer1M": 0.15, "description": "Modèle compact (8B) optimisé pour la rapidité d'exécution et l'edge computing." },
+    { "id": "deepseek-chat",               "label": "DeepSeek V3.2",     "editeur": "deepseek",  "inputPer1M": 0.14, "outputPer1M": 0.28, "description": "Modèle phare de DeepSeek, excellent rapport qualité-prix en codage et raisonnement (mode raisonnement activable)." },
+    { "id": "grok-4.20-0309-reasoning",    "label": "Grok 4.20",         "editeur": "grok",      "inputPer1M": 2,    "outputPer1M": 6,    "description": "Modèle phare de xAI, très performant en analyse (mode raisonnement activable)." },
+    { "id": "grok-4-1-fast-reasoning",     "label": "Grok 4.1 Fast",     "editeur": "grok",      "inputPer1M": 0.2,  "outputPer1M": 0.5,  "description": "Modèle rapide et économique de xAI, fenêtre de contexte de 2M tokens." },
+    { "id": "glm-5.1",                     "label": "GLM-5.1",           "editeur": "zai",       "inputPer1M": 1.4,  "outputPer1M": 4.4,  "description": "Modèle codage le plus puissant de Zhipu AI, 200K de contexte, avec mode raisonnement activable." },
+    { "id": "glm-5",                       "label": "GLM-5",             "editeur": "zai",       "inputPer1M": 1,    "outputPer1M": 3.2,  "description": "Modèle phare de Zhipu AI (744B MoE), rival des meilleurs modèles mondiaux (mode raisonnement activable)." },
+    { "id": "glm-4.7-flash",               "label": "GLM-4.7 Flash",     "editeur": "zai",       "inputPer1M": 0,    "outputPer1M": 0,    "description": "Modèle ultra-rapide de Zhipu, gratuit, bon pour les tâches simples." }
   ],
   "image": [
-    { "id": "gemini-3-pro-image-preview",    "label": "Nano Banana Pro", "editeur": "google", "inputPer1M": 2,   "outputPer1M": 12, "imageOutput": 0.134 },
-    { "id": "gemini-3.1-flash-image-preview", "label": "Nano Banana 2",  "editeur": "google", "inputPer1M": 0.5, "outputPer1M": 3,  "imageOutput": 0.134 },
-    { "id": "gpt-image-1.5",                 "label": "GPT Image 1.5",  "editeur": "openai", "inputPer1M": 5,   "outputPer1M": 10, "imageOutput": 0.2 }
-  ],
-  "tts": [
-    { "id": "gpt-4o-mini-tts", "label": "OpenAI TTS", "editeur": "openai", "prix": "$12/1M car." },
-    { "id": "gemini-2.5-flash-preview-tts", "label": "Google TTS", "editeur": "google", "prix": "$0.25/$1.5" }
-  ],
-  "stt": [
-    { "id": "whisper-1", "label": "OpenAI Whisper", "editeur": "openai", "prix": "$0.006/min" },
-    { "id": "voxtral-mini-latest", "label": "Mistral Voxtral", "editeur": "mistral", "prix": "$0.003/min" }
+    { "id": "gemini-3-pro-image-preview",    "label": "Nano Banana Pro", "editeur": "google", "inputPer1M": 2,   "outputPer1M": 12, "imageOutput": 0.134, "imagePricing": { "1K": 0.134, "2K": 0.134, "4K": 0.24 }, "description": "Génération d'images via Gemini Pro, haute qualité et bonne compréhension des prompts." },
+    { "id": "gemini-3.1-flash-image-preview", "label": "Nano Banana 2",  "editeur": "google", "inputPer1M": 0.5, "outputPer1M": 3,  "imageOutput": 0.067, "imagePricing": { "1K": 0.067, "2K": 0.101, "4K": 0.151 }, "description": "Génération d'images rapide et économique basée sur Gemini Flash." },
+    { "id": "gpt-image-1.5",                 "label": "GPT Image 1.5",  "editeur": "openai", "inputPer1M": 5,   "outputPer1M": 10, "imageOutput": 0.133, "imagePricing": { "low": { "1024x1024": 0.009, "1024x1536": 0.013, "1536x1024": 0.013 }, "medium": { "1024x1024": 0.034, "1024x1536": 0.05, "1536x1024": 0.05 }, "high": { "1024x1024": 0.133, "1024x1536": 0.2, "1536x1024": 0.2 } }, "description": "Modèle de génération d'images d'OpenAI, excellent en réalisme et créativité." },
+    { "id": "gpt-image-1-mini",              "label": "GPT Image 1 Mini", "editeur": "openai", "inputPer1M": 2,   "outputPer1M": 0,  "imageOutput": 0.036, "imagePricing": { "low": { "1024x1024": 0.005, "1024x1536": 0.006, "1536x1024": 0.006 }, "medium": { "1024x1024": 0.011, "1024x1536": 0.015, "1536x1024": 0.015 }, "high": { "1024x1024": 0.036, "1024x1536": 0.052, "1536x1024": 0.052 } }, "description": "Version mini de GPT Image, nettement moins chère, idéale pour les itérations rapides." },
+    { "id": "black-forest-labs/flux.2-klein-4b", "label": "Flux 2 Klein 4B", "editeur": "openrouter", "inputPer1M": 0, "outputPer1M": 0, "imageOutput": 0.01, "description": "Modèle Flux rapide et économique, idéal pour le prototypage et les itérations." },
+    { "id": "black-forest-labs/flux.2-pro",      "label": "Flux 2 Pro",      "editeur": "openrouter", "inputPer1M": 0, "outputPer1M": 0, "imageOutput": 0.03, "description": "Modèle Flux professionnel avec textures nettes et éclairage stable." },
+    { "id": "black-forest-labs/flux.2-flex",     "label": "Flux 2 Flex",     "editeur": "openrouter", "inputPer1M": 0, "outputPer1M": 0, "imageOutput": 0.06, "description": "Modèle Flux polyvalent, excellent en typographie et édition multi-référence." },
+    { "id": "black-forest-labs/flux.2-max",      "label": "Flux 2 Max",      "editeur": "openrouter", "inputPer1M": 0, "outputPer1M": 0, "imageOutput": 0.07, "description": "Modèle Flux haut de gamme, qualité maximale et meilleure compréhension des prompts." }
   ],
   "search": [
-    { "id": "sonar-pro", "description": "Recherche web avancée avec synthèse de sources et citations.",            "label": "Sonar Pro",            "editeur": "perplexity", "inputPer1M": 3, "outputPer1M": 15 },
-    { "id": "sonar-reasoning-pro", "description": "Recherche web avec raisonnement approfondi.",  "label": "Sonar Reasoning Pro",  "editeur": "perplexity", "inputPer1M": 2, "outputPer1M": 8 }
+    { "id": "sonar",                "label": "Sonar",                "editeur": "perplexity", "inputPer1M": 1, "outputPer1M": 1,  "description": "Recherche web avec synthèse de sources multiples et citations. 5$/1k recherches web" },
+    { "id": "sonar-pro",            "label": "Sonar Pro",            "editeur": "perplexity", "inputPer1M": 3, "outputPer1M": 15, "description": "Recherche web avancée avec synthèse de sources multiples et citations. 5$/1k recherches web" },
+    { "id": "sonar-reasoning-pro",  "label": "Sonar Reasoning Pro",  "editeur": "perplexity", "inputPer1M": 2, "outputPer1M": 8,  "description": "⚠️ Très coûteux. Recherche web avec raisonnement approfondi pour les questions complexes. 5$/1k recherches web" }
+  ],
+  "tts": [
+    { "id": "gpt-4o-mini-tts",                  "label": "OpenAI (gpt-4o-mini-tts)",          "editeur": "openai",  "prix": "$12/1M car.",  "description": "Synthèse vocale rapide et expressive d'OpenAI." },
+    { "id": "gemini-3.1-flash-tts-preview",     "label": "Google (Gemini 3.1 Flash TTS)",     "editeur": "google",  "prix": "$1 / $20",     "description": "Dernière génération TTS de Google — 70+ langues, dialogue multi-voix, contrôle expressif via tags audio." },
+    { "id": "gemini-2.5-flash-preview-tts",     "label": "Google (Gemini 2.5 Flash TTS)",     "editeur": "google",  "prix": "$0.50 / $10",  "description": "Synthèse vocale de Google via Gemini, voix naturelles multilingues." },
+    { "id": "voxtral-mini-tts-2603",            "label": "Mistral (Voxtral Mini TTS)",        "editeur": "mistral", "prix": "$16/1M car.",  "description": "Synthèse vocale légère et rapide par Mistral." },
+    { "id": "system-tts",                       "label": "Système (navigateur)",              "editeur": "system",  "prix": "Gratuit",      "description": "Synthèse vocale native du navigateur (voix du système)." }
+  ],
+  "stt": [
+    { "id": "whisper-1",                       "label": "OpenAI (Whisper)",                  "editeur": "openai",  "prix": "$0.006/min",   "description": "Transcription audio précise et multilingue par OpenAI." },
+    { "id": "gemini-3.1-flash-lite-preview",   "label": "Google (Gemini 3.1 Flash Lite)",    "editeur": "google",  "prix": "$0.25 / $1.5", "description": "Transcription audio via Gemini Flash Lite, rapide et polyvalent." },
+    { "id": "voxtral-mini-latest",             "label": "Mistral (Voxtral Mini 2)",          "editeur": "mistral", "prix": "$0.003/min",   "description": "Modèle de transcription de pointe par Mistral, léger et rapide." }
   ]
 };
