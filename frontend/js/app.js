@@ -305,19 +305,46 @@ marked.use({
     }
 });
 
-// --- Thème clair/sombre ---
-function applyTheme(dark) {
-    document.body.classList.toggle('dark', dark);
-    themeToggle.innerHTML = dark ? '&#9790; Thème sombre' : '&#9788; Thème clair';
+// --- Thème clair/sombre/auto (issue #14) ---
+// 3 valeurs persistees dans localStorage 'goudai-theme' :
+//   'dark'  -> body.dark (design KIRO Noir Aurique, defaut)
+//   'light' -> body sans .dark (override body:not(.dark) en CSS)
+//   'auto'  -> suit prefers-color-scheme du systeme
+// Cette fonction est la source de verite. Elle :
+//  - ajoute/retire body.dark selon le mode resolu
+//  - sync le bouton sidebar #theme-toggle (icone + libelle)
+//  - sync les radios de l'onglet Apparence (modale Config v2)
+function applyTheme(value) {
+    if (value !== 'dark' && value !== 'light' && value !== 'auto') value = 'dark';
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const effectiveDark = (value === 'dark') || (value === 'auto' && prefersDark);
+    document.body.classList.toggle('dark', effectiveDark);
+    // Retire les classes anti-FOUC injectees dans <head> -- desormais inutiles,
+    // le CSS body.dark / body:not(.dark) gere le rendu via les variables.
+    document.documentElement.classList.remove('preboot-dark', 'preboot-light');
+    if (themeToggle) {
+        // Bouton sidebar : libelle decrit l'action *contraire* (toggle vers l'autre mode)
+        themeToggle.innerHTML = effectiveDark ? '&#9788; Thème clair' : '&#9790; Thème sombre';
+    }
+    // Sync les radios de l'onglet Apparence (modale Config v2 - PR7)
+    const radio = document.querySelector('input[name="theme-choice"][value="' + value + '"]');
+    if (radio) radio.checked = true;
+    try { localStorage.setItem('goudai-theme', value); } catch {}
 }
 
-const savedTheme = localStorage.getItem('goudai-theme');
-applyTheme(savedTheme === 'dark');
+const savedTheme = localStorage.getItem('goudai-theme') || 'dark';
+applyTheme(savedTheme);
 
+// Bouton sidebar legacy : toggle binaire dark <-> light (skip 'auto')
 themeToggle.addEventListener('click', () => {
-    const isDark = document.body.classList.toggle('dark');
-    localStorage.setItem('goudai-theme', isDark ? 'dark' : 'light');
-    themeToggle.innerHTML = isDark ? '&#9790; Thème sombre' : '&#9788; Thème clair';
+    const current = localStorage.getItem('goudai-theme') || 'dark';
+    // Si 'auto' ou 'dark' -> bascule vers 'light' ; si 'light' -> 'dark'
+    applyTheme(current === 'light' ? 'dark' : 'light');
+});
+
+// Si l'utilisateur est en mode auto et change le theme OS, on suit
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if ((localStorage.getItem('goudai-theme') || 'dark') === 'auto') applyTheme('auto');
 });
 
 // --- Recherche de conversations ---
@@ -4603,22 +4630,14 @@ window.updateImageParamsVisibility = updateImageParamsVisibility;
         document.getElementById('faq-btn')?.click();
     });
 
-    // Onglet Apparence : theme radios <-> localStorage 'goudai-theme'
+    // Onglet Apparence : delegue a la fonction applyTheme() globale (issue #14).
+    // Celle-ci sync le body.dark + le bouton sidebar + le localStorage.
     const themeRadios = document.querySelectorAll('input[name="theme-choice"]');
-    function applyTheme(value) {
-        try { localStorage.setItem('goudai-theme', value); } catch {}
-        if (value === 'auto') {
-            document.documentElement.classList.toggle('dark-init', window.matchMedia('(prefers-color-scheme: dark)').matches);
-        } else {
-            document.documentElement.classList.toggle('dark-init', value === 'dark');
-        }
-    }
-    themeRadios.forEach(r => r.addEventListener('change', () => { if (r.checked) applyTheme(r.value); }));
-    // Init au boot : coche le radio correspondant a la valeur localStorage
-    const initTheme = (function() {
-        try { return localStorage.getItem('goudai-theme') || 'dark'; } catch { return 'dark'; }
-    })();
-    themeRadios.forEach(r => { if (r.value === initTheme) r.checked = true; });
+    themeRadios.forEach(r => {
+        r.addEventListener('change', () => {
+            if (r.checked && typeof applyTheme === 'function') applyTheme(r.value);
+        });
+    });
 
     // Onglet Partager : URL de l'instance + bouton copier
     const shareInput = document.getElementById('share-url-input');

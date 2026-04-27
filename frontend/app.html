@@ -17,18 +17,27 @@
     <meta name="apple-mobile-web-app-title" content="GoudAI Chat">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
 
-    <link rel="stylesheet" href="css/style.css?v=12">
+    <link rel="stylesheet" href="css/style.css?v=13">
     <link rel="stylesheet" href="css/canvas.css?v=43">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <!-- Apply dark mode before paint -->
+    <!-- Anti-FOUC (issue #14) : applique body.dark/body et le bg correct
+         AVANT le chargement de style.css pour eviter le flash. Source de
+         verite localStorage.goudai-theme : 'dark' | 'light' | 'auto'. -->
     <script>
       (function(){
         var t = localStorage.getItem('goudai-theme');
-        if(!t || t === 'dark') document.documentElement.classList.add('dark-init');
-        if(!t) localStorage.setItem('goudai-theme','dark');
+        if (!t) { t = 'dark'; localStorage.setItem('goudai-theme', t); }
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var dark = (t === 'dark') || (t === 'auto' && prefersDark);
+        document.documentElement.classList.toggle('preboot-dark', dark);
+        document.documentElement.classList.toggle('preboot-light', !dark);
       })();
     </script>
-    <style>html.dark-init body { background: #080709; }</style>
+    <style>
+      html.preboot-dark  body { background: #080709; color: #ece7e0; }
+      html.preboot-light body { background: #f5f0e8; color: #1c1610; }
+    </style>
 </head>
 <body>
     <button id="sidebar-toggle" class="sidebar-toggle" title="Masquer le panneau">
@@ -580,7 +589,7 @@
     <script src="js/auth.js"></script>
     <script src="js/api.js?v=5"></script>
     <script src="js/filemanager.js"></script>
-    <script src="js/app.js?v=89"></script>
+    <script src="js/app.js?v=90"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
