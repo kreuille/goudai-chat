@@ -1382,11 +1382,21 @@ catModalDelete.addEventListener('click', async () => {
 
 // --- Sélecteur de modèle personnalisé ---
 
+// FIX critique : EDITEUR_ORDER + EDITEUR_LABELS doivent inclure TOUS les
+// editeurs presents dans models.js, sinon populateCustomSelect ignore
+// silencieusement tous les modeles dont l'editeur n'est pas liste.
+// Avant : DeepSeek/Grok/GLM(zai)/OpenRouter/Flux etaient invisibles.
 const EDITEUR_LABELS = {
     openai: 'OpenAI', anthropic: 'Anthropic', google: 'Google',
-    mistral: 'Mistral', perplexity: 'Perplexity', local: 'Local'
+    mistral: 'Mistral', deepseek: 'DeepSeek', grok: 'xAI Grok',
+    zai: 'Z.ai (GLM)', perplexity: 'Perplexity',
+    openrouter: 'OpenRouter', local: 'Local'
 };
-const EDITEUR_ORDER = ['openai', 'anthropic', 'google', 'mistral', 'perplexity', 'local'];
+const EDITEUR_ORDER = [
+    'openai', 'anthropic', 'google', 'mistral',
+    'deepseek', 'grok', 'zai',
+    'perplexity', 'openrouter', 'local'
+];
 
 // R7: ProviderMark avec icones SVG reconnaissables des providers IA
 // (Claude burst, OpenAI flower, Gemini sparkle, etc.) — formes geometriques
