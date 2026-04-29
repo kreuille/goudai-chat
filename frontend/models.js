@@ -1,7 +1,9 @@
 const MODELS_DATA = {
   "text": [
-    { "id": "gpt-5.4-2026-03-05",          "label": "GPT-5.4",           "editeur": "openai",    "inputPer1M": 2.5, "outputPer1M": 15,  "description": "Dernière génération OpenAI, performances de pointe en raisonnement et créativité." },
-    { "id": "gpt-5.2-2025-12-11",          "label": "GPT-5.2",           "editeur": "openai",    "inputPer1M": 1.75, "outputPer1M": 14, "description": "Modèle avancé avec raisonnement amélioré et large fenêtre de contexte." },
+    { "id": "gpt-5.5-2026-04-23",          "label": "GPT-5.5",           "editeur": "openai",    "inputPer1M": 5,    "outputPer1M": 30,  "description": "Dernier modèle flagship d'OpenAI (avril 2026), le plus intelligent à ce jour. Contexte 1M tokens." },
+    { "id": "gpt-5.5-pro-2026-04-23",      "label": "GPT-5.5 Pro",       "editeur": "openai",    "inputPer1M": 30,   "outputPer1M": 180, "description": "Version Pro de GPT-5.5, pour les tâches professionnelles les plus exigeantes. ⚠️ Très coûteux." },
+    { "id": "gpt-5.4-2026-03-05",          "label": "GPT-5.4",           "editeur": "openai",    "inputPer1M": 2.5,  "outputPer1M": 15,  "description": "Génération précédente OpenAI, excellentes performances en raisonnement et créativité." },
+    { "id": "gpt-5.2-2025-12-11",          "label": "GPT-5.2",           "editeur": "openai",    "inputPer1M": 1.75, "outputPer1M": 14,  "description": "Modèle avancé avec raisonnement amélioré et large fenêtre de contexte." },
     { "id": "gpt-4.1-2025-04-14",         "label": "GPT-4.1",           "editeur": "openai",    "inputPer1M": 2,    "outputPer1M": 8,  "description": "Modèle phare d'OpenAI, excellent en codage et suivi d'instructions complexes." },
     { "id": "gpt-5.4-mini-2026-03-17",     "label": "GPT-5.4 Mini",      "editeur": "openai",    "inputPer1M": 0.75, "outputPer1M": 4.5,"description": "Modèle mini le plus puissant d'OpenAI, excellent pour codage, usage d'outils et sous-agents." },
     { "id": "gpt-5.4-nano-2026-03-17",     "label": "GPT-5.4 Nano",      "editeur": "openai",    "inputPer1M": 0.2,  "outputPer1M": 1.25,"description": "Version ultra-rapide et économique de GPT-5.4, idéale pour classification, extraction et sous-agents." },
@@ -16,7 +18,9 @@ const MODELS_DATA = {
     { "id": "mistral-large-latest",        "label": "Mistral Large 3",   "editeur": "mistral",   "inputPer1M": 0.5,  "outputPer1M": 1.5,  "description": "Le modèle phare et le plus performant de Mistral. Cocorico." },
     { "id": "mistral-small-latest",        "label": "Mistral Small 4",   "editeur": "mistral",   "inputPer1M": 0.15, "outputPer1M": 0.6,  "description": "Petit modèle économique, très rapide, avec raisonnement, parfait pour les tâches simples." },
     { "id": "ministral-8b-latest",         "label": "Ministral 8B",      "editeur": "mistral",   "inputPer1M": 0.15, "outputPer1M": 0.15, "description": "Modèle compact (8B) optimisé pour la rapidité d'exécution et l'edge computing." },
-    { "id": "deepseek-chat",               "label": "DeepSeek V3.2",     "editeur": "deepseek",  "inputPer1M": 0.14, "outputPer1M": 0.28, "description": "Modèle phare de DeepSeek, excellent rapport qualité-prix en codage et raisonnement (mode raisonnement activable)." },
+    { "id": "deepseek-v4-pro",             "label": "DeepSeek V4 Pro",   "editeur": "deepseek",  "inputPer1M": 0.145, "outputPer1M": 3.48, "description": "Dernier flagship DeepSeek (avril 2026), 1.6T paramètres, 1M contexte. Raisonnement activable. Promo -75% jusqu'au 31/05." },
+    { "id": "deepseek-v4-flash",           "label": "DeepSeek V4 Flash", "editeur": "deepseek",  "inputPer1M": 0.14,  "outputPer1M": 0.28, "description": "Version Flash de DeepSeek V4, 284B paramètres, 1M contexte. Rapport qualité-prix exceptionnel." },
+    { "id": "deepseek-chat",               "label": "DeepSeek V3.2",     "editeur": "deepseek",  "inputPer1M": 0.14,  "outputPer1M": 0.28, "description": "⚠️ Déprécié le 24/07/2026. Modèle précédent de DeepSeek, excellent rapport qualité-prix (mode raisonnement activable)." },
     { "id": "grok-4.20-0309-reasoning",    "label": "Grok 4.20",         "editeur": "grok",      "inputPer1M": 2,    "outputPer1M": 6,    "description": "Modèle phare de xAI, très performant en analyse (mode raisonnement activable)." },
     { "id": "grok-4-1-fast-reasoning",     "label": "Grok 4.1 Fast",     "editeur": "grok",      "inputPer1M": 0.2,  "outputPer1M": 0.5,  "description": "Modèle rapide et économique de xAI, fenêtre de contexte de 2M tokens." },
     { "id": "glm-5.1",                     "label": "GLM-5.1",           "editeur": "zai",       "inputPer1M": 1.4,  "outputPer1M": 4.4,  "description": "Modèle codage le plus puissant de Zhipu AI, 200K de contexte, avec mode raisonnement activable." },
@@ -42,12 +46,4 @@ const MODELS_DATA = {
     { "id": "gpt-4o-mini-tts",                  "label": "OpenAI (gpt-4o-mini-tts)",          "editeur": "openai",  "prix": "$12/1M car.",  "description": "Synthèse vocale rapide et expressive d'OpenAI." },
     { "id": "gemini-3.1-flash-tts-preview",     "label": "Google (Gemini 3.1 Flash TTS)",     "editeur": "google",  "prix": "$1 / $20",     "description": "Dernière génération TTS de Google — 70+ langues, dialogue multi-voix, contrôle expressif via tags audio." },
     { "id": "gemini-2.5-flash-preview-tts",     "label": "Google (Gemini 2.5 Flash TTS)",     "editeur": "google",  "prix": "$0.50 / $10",  "description": "Synthèse vocale de Google via Gemini, voix naturelles multilingues." },
-    { "id": "voxtral-mini-tts-2603",            "label": "Mistral (Voxtral Mini TTS)",        "editeur": "mistral", "prix": "$16/1M car.",  "description": "Synthèse vocale légère et rapide par Mistral." },
-    { "id": "system-tts",                       "label": "Système (navigateur)",              "editeur": "system",  "prix": "Gratuit",      "description": "Synthèse vocale native du navigateur (voix du système)." }
-  ],
-  "stt": [
-    { "id": "whisper-1",                       "label": "OpenAI (Whisper)",                  "editeur": "openai",  "prix": "$0.006/min",   "description": "Transcription audio précise et multilingue par OpenAI." },
-    { "id": "gemini-3.1-flash-lite-preview",   "label": "Google (Gemini 3.1 Flash Lite)",    "editeur": "google",  "prix": "$0.25 / $1.5", "description": "Transcription audio via Gemini Flash Lite, rapide et polyvalent." },
-    { "id": "voxtral-mini-latest",             "label": "Mistral (Voxtral Mini 2)",          "editeur": "mistral", "prix": "$0.003/min",   "description": "Modèle de transcription de pointe par Mistral, léger et rapide." }
-  ]
-};
+    { "id": "voxtral-mini-tts-2603",       
