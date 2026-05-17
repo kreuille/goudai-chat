@@ -33,6 +33,28 @@ function getImageTarif(model) {
     return IMAGE_TARIFS[model] || null;
 }
 
+// K2: prix unitaire d'une image selon le modele, la qualite ('low'|'medium'|'high')
+// et la resolution ('1024x1024', etc., ou '1K'/'2K'/'4K' pour Gemini).
+// Fallback sur tarif.imageOutput si imagePricing absent ou cle inconnue.
+function computeImagePrice(modelId, quality, resolution) {
+    const tarif = IMAGE_TARIFS[modelId];
+    if (!tarif) return 0;
+    const pricing = tarif.imagePricing;
+    if (!pricing) return tarif.imageOutput || 0;
+    // Format OpenAI : { low: { '1024x1024': 0.006, ... }, medium: {...}, high: {...} }
+    if (quality && pricing[quality] && typeof pricing[quality] === 'object') {
+        const byRes = pricing[quality];
+        if (resolution && byRes[resolution] !== undefined) return byRes[resolution];
+        // Fallback : premiere resolution disponible pour cette qualite
+        const firstKey = Object.keys(byRes)[0];
+        return firstKey ? byRes[firstKey] : (tarif.imageOutput || 0);
+    }
+    // Format Gemini : { '1K': 0.067, '2K': 0.101, '4K': 0.151 }
+    if (resolution && pricing[resolution] !== undefined) return pricing[resolution];
+    // Fallback final
+    return tarif.imageOutput || 0;
+}
+
 function getImageModelEditeur(modelId) {
     const m = IMAGE_MODELS.find(m => m.id === modelId);
     return m ? m.editeur : null;
@@ -68,10 +90,19 @@ function loadModels() {
         }
     }
     // Modèles image
+    // K2 : on conserve imagePricing (pricing detaille par resolution/qualite)
+    // en plus du imageOutput de base, pour permettre un calcul precis du cout
+    // selon la taille de l'image generee.
     if (data.image) {
         IMAGE_MODELS = data.image.map(m => ({ id: m.id, label: m.label, editeur: m.editeur }));
         for (const m of data.image) {
-            IMAGE_TARIFS[m.id] = { editeur: m.editeur, inputPer1M: m.inputPer1M, outputPer1M: m.outputPer1M, imageOutput: m.imageOutput };
+            IMAGE_TARIFS[m.id] = {
+                editeur: m.editeur,
+                inputPer1M: m.inputPer1M,
+                outputPer1M: m.outputPer1M,
+                imageOutput: m.imageOutput,
+                imagePricing: m.imagePricing // peut etre {low/medium/high:{...}} pour OpenAI ou {1K/2K/4K:0.xx} pour Google
+            };
         }
     }
     // Modèles recherche
