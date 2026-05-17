@@ -100,7 +100,9 @@ const AUDIO_SETTINGS = {
     sttProvider: 'openai',
     ttsVoice: 'coral',
     summaryModel: 'gpt-4.1-2025-04-14',
-    roleOptimizeModel: 'claude-sonnet-4-5-20250929'
+    roleOptimizeModel: 'claude-sonnet-4-5-20250929',
+    // K5 : modele utilise pour expliquer les erreurs API obscures a l'utilisateur
+    errorExplainerModel: 'gpt-5.4-mini-2026-03-17'
 };
 
 // C4: pré-chargement voix Web Speech API (Chrome les charge async).
@@ -139,6 +141,7 @@ async function saveAudioSettings(settings) {
     if (settings.enhanceModel) AUDIO_SETTINGS.enhanceModel = settings.enhanceModel;
     if (settings.summaryModel) AUDIO_SETTINGS.summaryModel = settings.summaryModel;
     if (settings.roleOptimizeModel) AUDIO_SETTINGS.roleOptimizeModel = settings.roleOptimizeModel;
+    if (settings.errorExplainerModel) AUDIO_SETTINGS.errorExplainerModel = settings.errorExplainerModel;
     localStorage.setItem('goudai-audio-settings', JSON.stringify(AUDIO_SETTINGS));
     // Sync serveur (non-bloquant : on ignore l'échec, le cache local prend le relais)
     try {
@@ -2606,6 +2609,7 @@ function regenerateLastResponse() {
                 assistantDiv.classList.remove('streaming');
                 const textEl = assistantDiv.querySelector('.message-text');
                 if (textEl) { textEl.textContent = `Erreur : ${err.message}`; textEl.style.color = '#c00'; }
+                enrichErrorWithExplanation(textEl, err, regenUserMsg?.content || '', currentImageModel);
                 isStreaming = false; currentAbortController = null; updateSendButton(); promptInput.focus();
             },
             regenRefImages,
@@ -2668,6 +2672,7 @@ function regenerateLastResponse() {
                 assistantDiv.classList.remove('streaming');
                 const textEl = assistantDiv.querySelector('.message-text');
                 if (textEl) { textEl.textContent = `Erreur : ${err.message}`; textEl.style.color = '#c00'; }
+                enrichErrorWithExplanation(textEl, err, regenUserMsg?.content || '', regenTextModel);
                 isStreaming = false; currentAbortController = null; updateSendButton(); promptInput.focus();
             },
             spContent,
@@ -2931,6 +2936,7 @@ function sendMessage() {
                     textEl.textContent = `Erreur : ${err.message}`;
                     textEl.style.color = '#c00';
                 }
+                enrichErrorWithExplanation(textEl, err, msg, currentImageModel);
                 isStreaming = false;
                 currentAbortController = null;
                 updateSendButton();
@@ -3027,6 +3033,7 @@ function sendMessage() {
                     textEl.textContent = `Erreur : ${err.message}`;
                     textEl.style.color = '#c00';
                 }
+                enrichErrorWithExplanation(textEl, err, msg, activeTextModel);
                 isStreaming = false;
                 currentAbortController = null;
                 updateSendButton();
@@ -5106,6 +5113,26 @@ window.updateImageParamsVisibility = updateImageParamsVisibility;
     // Expose pour debug / autres triggers
     window.openCmdPalette = openPalette;
 })();
+
+// === K5 : enrichissement des messages d'erreur via explainError() ====
+// Affiche l'erreur brute immediatement, puis appelle l'explainer LLM en
+// arriere-plan. Si une explication revient (<12s), l'ajoute en dessous
+// en italique discret. No-op si explainer desactive ou cle manquante.
+function enrichErrorWithExplanation(textEl, err, userMessage, modelUsed, fileNames) {
+    if (!textEl || !err) return;
+    if (typeof explainError !== 'function') return;
+    explainError(userMessage || '', fileNames || [], modelUsed || null, err.message || String(err))
+        .then(explanation => {
+            if (!explanation) return;
+            // Verifie que l'erreur est toujours affichee (pas remplacee par un retry)
+            if (!textEl.isConnected) return;
+            const div = document.createElement('div');
+            div.style.cssText = 'margin-top:8px;font-style:italic;font-size:0.92em;color:var(--text-secondary,#888);border-top:1px dashed currentColor;padding-top:6px;opacity:0.85';
+            div.textContent = '💡 ' + explanation;
+            textEl.appendChild(div);
+        })
+        .catch(() => {});
+}
 
 // === K4 : bouton actualiser catalogue OpenRouter ===
 // Permet a l'utilisateur de re-fetcher le catalogue OR (cache 24h sinon).

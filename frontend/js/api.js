@@ -1336,3 +1336,48 @@ async function enhancePrompt(text, onDelta, onDone, onError, isImage = false) {
         null                                         // signal
     );
 }
+
+// === K5 : explainError() — explication LLM des erreurs API obscures ====
+// Filtre les erreurs deja claires (cle manquante, connexion impossible, etc.)
+// pour ne pas les paraphraser inutilement. Pour les vraies erreurs cryptiques
+// (JSON Anthropic, codes HTTP, etc.), demande a un petit modele de les
+// reformuler en 1-2 phrases simples en francais.
+function isSelfExplainedError(errorMessage) {
+    if (!errorMessage) return false;
+    const m = String(errorMessage);
+    return /Clé API|cle API|requise\. Renseignez|injoignable|Modèle introuvable|catalogue, sélectionnez|Connexion à .* impossible|CORS|manquante/i.test(m);
+}
+
+async function explainError(userMessage, fileNames, modelUsed, errorMessage) {
+    if (isSelfExplainedError(errorMessage)) return null;
+    const modelId = (typeof AUDIO_SETTINGS !== 'undefined' && AUDIO_SETTINGS.errorExplainerModel) || null;
+    if (!modelId) return null;
+    // Ne pas tenter si la cle du provider du explainerModel n'est pas presente
+    const explainerEditeur = getModelEditeur(modelId);
+    if (!explainerEditeur || !API_KEYS[explainerEditeur]) return null;
+
+    const prompt = `Tu es un assistant qui aide les utilisateurs d'une application de chat IA. L'utilisateur a envoyé un message et une erreur est survenue. Explique en 1 à 2 phrases simples et claires en français quel est le problème et comment le résoudre. Ne mentionne pas de détails techniques JSON. Sois concis, utile, et propose une action quand c'est possible.
+
+Message de l'utilisateur (extrait) : ${(userMessage || '').slice(0, 300)}
+${Array.isArray(fileNames) && fileNames.length ? 'Fichiers joints : ' + fileNames.join(', ') : ''}
+Modèle utilisé : ${modelUsed || 'inconnu'}
+Erreur retournée : ${errorMessage}
+
+Explication :`;
+
+    return new Promise((resolve) => {
+        let full = '';
+        let resolved = false;
+        const finish = (val) => { if (!resolved) { resolved = true; resolve(val); } };
+        streamModel(
+            modelId,
+            [{ role: 'user', content: prompt }],
+            (chunk) => { full += chunk; },
+            () => finish(full.trim()),
+            () => finish(null),
+            null, false, null, null
+        );
+        // Timeout 12s : si l'explainer galere, on tombe sur l'erreur brute
+        setTimeout(() => finish(null), 12000);
+    });
+}
