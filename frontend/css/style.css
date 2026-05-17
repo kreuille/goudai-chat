@@ -796,8 +796,9 @@ body.sidebar-locked{overflow:hidden}
 .custom-select-option--empty { padding: 8px 12px; font-size: 12px; color: var(--text-muted); cursor: pointer; }
 .custom-select-option--empty:hover { background: var(--bg-hover); }
 .custom-select-option-text { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
-/* R7: ProviderMark — badge 20px contenant le SVG brand-like du provider.
-   Couleur derivee du hue via --provider-hue inline. */
+/* K3: ProviderMark — vrais logos SVG des providers IA (Kiro v3.1).
+   Badge 22px avec couleur de fond derivee du hue par provider. Les SVG
+   ont fill="currentColor" et color est defini en oklch teinte par hue. */
 .provider-mark {
     display: inline-flex; align-items: center; justify-content: center;
     width: 22px; height: 22px; border-radius: 6px;
@@ -806,6 +807,28 @@ body.sidebar-locked{overflow:hidden}
     flex-shrink: 0;
 }
 .provider-mark svg { display: block; width: 13px; height: 13px; }
+/* K3: pour les <img src=images/Provider.svg> (fill currentColor), on doit
+   appliquer la couleur via filter car les <img> ne propagent pas currentColor.
+   Solution : SVG inline serait ideal, mais <img> simplifie le DOM.
+   Trick : on utilise mask-image qui supporte le color via background-color. */
+.provider-mark img {
+    width: 13px; height: 13px;
+    display: block;
+    /* On veut que le SVG prenne la couleur du conteneur (color: oklch...).
+       <img> n'herite pas, donc on mask et background-color. */
+    -webkit-mask: var(--mark-mask, none) center/contain no-repeat;
+    mask: var(--mark-mask, none) center/contain no-repeat;
+    background-color: currentColor;
+}
+.provider-mark img[src*="OpenAI"]     { --mark-mask: url('../images/OpenAI.svg'); }
+.provider-mark img[src*="Anthropic"]  { --mark-mask: url('../images/Anthropic.svg'); }
+.provider-mark img[src*="Google"]     { --mark-mask: url('../images/Google.svg'); }
+.provider-mark img[src*="Mistral"]    { --mark-mask: url('../images/Mistral.svg'); }
+.provider-mark img[src*="Grok"]       { --mark-mask: url('../images/Grok.svg'); }
+.provider-mark img[src*="DeepSeek"]   { --mark-mask: url('../images/DeepSeek.svg'); }
+.provider-mark img[src*="Perplexity"] { --mark-mask: url('../images/Perplexity.svg'); }
+.provider-mark img[src*="Z.ai"]       { --mark-mask: url('../images/Z.ai.svg'); }
+.provider-mark img[src*="OpenRouter"] { --mark-mask: url('../images/OpenRouter.svg'); }
 body.dark .provider-mark {
     background: oklch(28% 0.05 var(--provider-hue, 270));
     color: oklch(85% 0.12 var(--provider-hue, 270));

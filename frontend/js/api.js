@@ -33,6 +33,28 @@ function getImageTarif(model) {
     return IMAGE_TARIFS[model] || null;
 }
 
+// K2: prix unitaire d'une image selon le modele, la qualite ('low'|'medium'|'high')
+// et la resolution ('1024x1024', etc., ou '1K'/'2K'/'4K' pour Gemini).
+// Fallback sur tarif.imageOutput si imagePricing absent ou cle inconnue.
+function computeImagePrice(modelId, quality, resolution) {
+    const tarif = IMAGE_TARIFS[modelId];
+    if (!tarif) return 0;
+    const pricing = tarif.imagePricing;
+    if (!pricing) return tarif.imageOutput || 0;
+    // Format OpenAI : { low: { '1024x1024': 0.006, ... }, medium: {...}, high: {...} }
+    if (quality && pricing[quality] && typeof pricing[quality] === 'object') {
+        const byRes = pricing[quality];
+        if (resolution && byRes[resolution] !== undefined) return byRes[resolution];
+        // Fallback : premiere resolution disponible pour cette qualite
+        const firstKey = Object.keys(byRes)[0];
+        return firstKey ? byRes[firstKey] : (tarif.imageOutput || 0);
+    }
+    // Format Gemini : { '1K': 0.067, '2K': 0.101, '4K': 0.151 }
+    if (resolution && pricing[resolution] !== undefined) return pricing[resolution];
+    // Fallback final
+    return tarif.imageOutput || 0;
+}
+
 function getImageModelEditeur(modelId) {
     const m = IMAGE_MODELS.find(m => m.id === modelId);
     return m ? m.editeur : null;
@@ -68,10 +90,19 @@ function loadModels() {
         }
     }
     // Modèles image
+    // K2 : on conserve imagePricing (pricing detaille par resolution/qualite)
+    // en plus du imageOutput de base, pour permettre un calcul precis du cout
+    // selon la taille de l'image generee.
     if (data.image) {
         IMAGE_MODELS = data.image.map(m => ({ id: m.id, label: m.label, editeur: m.editeur }));
         for (const m of data.image) {
-            IMAGE_TARIFS[m.id] = { editeur: m.editeur, inputPer1M: m.inputPer1M, outputPer1M: m.outputPer1M, imageOutput: m.imageOutput };
+            IMAGE_TARIFS[m.id] = {
+                editeur: m.editeur,
+                inputPer1M: m.inputPer1M,
+                outputPer1M: m.outputPer1M,
+                imageOutput: m.imageOutput,
+                imagePricing: m.imagePricing // peut etre {low/medium/high:{...}} pour OpenAI ou {1K/2K/4K:0.xx} pour Google
+            };
         }
     }
     // Modèles recherche
@@ -95,6 +126,96 @@ function getModelEditeur(modelId) {
 async function initConfig() {
     loadApiKeys();
     loadModels();
+    // K4 : si une cle OpenRouter est configuree, decouvrir dynamiquement le
+    // catalogue de modeles texte OR et les fusionner avec MODELS_DATA.
+    if (API_KEYS.openrouter) {
+        try { await mergeOpenRouterTextModels(); } catch (e) { console.warn('OR catalog:', e); }
+    }
+}
+
+// === K4 : Decouverte dynamique du catalogue OpenRouter (texte uniquement) ===
+// Permet a l'utilisateur d'utiliser n'importe quel modele texte OR sans
+// avoir a les declarer manuellement dans models.js. Les modeles fetched sont
+// caches localement (24h) puis fusionnes a MODELS + TARIFS.
+const OR_CATALOG_KEY = 'goudai-or-catalog-text';
+const OR_CATALOG_TTL = 24 * 60 * 60 * 1000; // 24h
+
+function getOrCatalogCache() {
+    try {
+        const raw = localStorage.getItem(OR_CATALOG_KEY);
+        if (!raw) return null;
+        const obj = JSON.parse(raw);
+        if (!obj || !Array.isArray(obj.models)) return null;
+        if (Date.now() - (obj.ts || 0) > OR_CATALOG_TTL) return null;
+        return obj.models;
+    } catch { return null; }
+}
+function setOrCatalogCache(models) {
+    try { localStorage.setItem(OR_CATALOG_KEY, JSON.stringify({ ts: Date.now(), models })); } catch {}
+}
+
+async function fetchOpenRouterCatalog(force) {
+    if (!force) {
+        const cached = getOrCatalogCache();
+        if (cached) return cached;
+    }
+    if (!API_KEYS.openrouter) throw new Error('Cle API OpenRouter manquante.');
+    const res = await fetch('https://openrouter.ai/api/v1/models', {
+        headers: { 'Authorization': 'Bearer ' + API_KEYS.openrouter }
+    });
+    if (!res.ok) throw new Error('OpenRouter /models error ' + res.status);
+    const data = await res.json();
+    const all = Array.isArray(data?.data) ? data.data : [];
+    // Filtrer les modeles texte : architecture.modality === 'text->text' ou
+    // input_modalities contient 'text' ET output_modalities est limite a 'text'.
+    const textOnly = all.filter(m => {
+        const arch = m.architecture || {};
+        const out = arch.output_modalities || [];
+        if (!Array.isArray(out)) return true;
+        return out.length === 0 || (out.length === 1 && out[0] === 'text');
+    });
+    // Normaliser pour MODELS_DATA
+    const normalized = textOnly.map(m => {
+        const pIn = parseFloat(m.pricing?.prompt) || 0;     // $/token
+        const pOut = parseFloat(m.pricing?.completion) || 0;
+        return {
+            id: m.id,
+            label: cleanOrModelLabel(m.name, m.id),
+            editeur: 'openrouter',
+            inputPer1M: pIn * 1e6,
+            outputPer1M: pOut * 1e6,
+            description: (m.description || '').slice(0, 200)
+        };
+    });
+    setOrCatalogCache(normalized);
+    return normalized;
+}
+
+// Helper : retire le prefixe fournisseur du nom d'un modele OpenRouter.
+// Ex : "OpenAI: GPT-5.5" -> "GPT-5.5", "Meta Llama 3.1 70B" -> "Llama 3.1 70B"
+function cleanOrModelLabel(name, id) {
+    if (!name || !id) return name || '';
+    const colonIdx = name.indexOf(':');
+    if (colonIdx > 0 && colonIdx < 30) {
+        const after = name.slice(colonIdx + 1).trim();
+        if (after) return after;
+    }
+    return name;
+}
+
+async function mergeOpenRouterTextModels() {
+    const orModels = await fetchOpenRouterCatalog(false);
+    if (!orModels || orModels.length === 0) return;
+    const existing = new Set(MODELS.map(m => m.id));
+    for (const m of orModels) {
+        if (existing.has(m.id)) continue;
+        MODELS.push({ id: m.id, label: m.label, editeur: m.editeur });
+        TARIFS[m.id] = {
+            editeur: m.editeur,
+            inputPer1M: m.inputPer1M,
+            outputPer1M: m.outputPer1M
+        };
+    }
 }
 
 // --- Convertir les messages internes vers le format de chaque provider ---
@@ -315,6 +436,10 @@ function streamModel(modelId, conversationHistory, onChunk, onDone, onError, sys
             // Zhipu AI (GLM family). Compatible OpenAI Chat Completions.
             // hasThinkTags=true: les modeles GLM-5/5.1 emettent <think>...</think> en mode raisonnement.
             return streamOpenAICompat(modelId, 'https://api.z.ai/api/paas/v4/chat/completions', API_KEYS.zai, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, true, modelParams);
+        case 'openrouter':
+            // K4 : OpenRouter Chat Completions (compat OpenAI). hasThinkTags=true
+            // car certains modeles reasoning (DeepSeek R1, etc.) emettent <think>.
+            return streamOpenAICompat(modelId, 'https://openrouter.ai/api/v1/chat/completions', API_KEYS.openrouter, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, true, modelParams);
         default:
             onError(new Error(`Éditeur inconnu pour le modèle ${modelId}`));
     }
@@ -1210,4 +1335,49 @@ async function enhancePrompt(text, onDelta, onDone, onError, isImage = false) {
         null,                                        // onThinkingChunk (ignoré pour enhance)
         null                                         // signal
     );
+}
+
+// === K5 : explainError() — explication LLM des erreurs API obscures ====
+// Filtre les erreurs deja claires (cle manquante, connexion impossible, etc.)
+// pour ne pas les paraphraser inutilement. Pour les vraies erreurs cryptiques
+// (JSON Anthropic, codes HTTP, etc.), demande a un petit modele de les
+// reformuler en 1-2 phrases simples en francais.
+function isSelfExplainedError(errorMessage) {
+    if (!errorMessage) return false;
+    const m = String(errorMessage);
+    return /Clé API|cle API|requise\. Renseignez|injoignable|Modèle introuvable|catalogue, sélectionnez|Connexion à .* impossible|CORS|manquante/i.test(m);
+}
+
+async function explainError(userMessage, fileNames, modelUsed, errorMessage) {
+    if (isSelfExplainedError(errorMessage)) return null;
+    const modelId = (typeof AUDIO_SETTINGS !== 'undefined' && AUDIO_SETTINGS.errorExplainerModel) || null;
+    if (!modelId) return null;
+    // Ne pas tenter si la cle du provider du explainerModel n'est pas presente
+    const explainerEditeur = getModelEditeur(modelId);
+    if (!explainerEditeur || !API_KEYS[explainerEditeur]) return null;
+
+    const prompt = `Tu es un assistant qui aide les utilisateurs d'une application de chat IA. L'utilisateur a envoyé un message et une erreur est survenue. Explique en 1 à 2 phrases simples et claires en français quel est le problème et comment le résoudre. Ne mentionne pas de détails techniques JSON. Sois concis, utile, et propose une action quand c'est possible.
+
+Message de l'utilisateur (extrait) : ${(userMessage || '').slice(0, 300)}
+${Array.isArray(fileNames) && fileNames.length ? 'Fichiers joints : ' + fileNames.join(', ') : ''}
+Modèle utilisé : ${modelUsed || 'inconnu'}
+Erreur retournée : ${errorMessage}
+
+Explication :`;
+
+    return new Promise((resolve) => {
+        let full = '';
+        let resolved = false;
+        const finish = (val) => { if (!resolved) { resolved = true; resolve(val); } };
+        streamModel(
+            modelId,
+            [{ role: 'user', content: prompt }],
+            (chunk) => { full += chunk; },
+            () => finish(full.trim()),
+            () => finish(null),
+            null, false, null, null
+        );
+        // Timeout 12s : si l'explainer galere, on tombe sur l'erreur brute
+        setTimeout(() => finish(null), 12000);
+    });
 }
