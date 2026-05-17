@@ -126,6 +126,96 @@ function getModelEditeur(modelId) {
 async function initConfig() {
     loadApiKeys();
     loadModels();
+    // K4 : si une cle OpenRouter est configuree, decouvrir dynamiquement le
+    // catalogue de modeles texte OR et les fusionner avec MODELS_DATA.
+    if (API_KEYS.openrouter) {
+        try { await mergeOpenRouterTextModels(); } catch (e) { console.warn('OR catalog:', e); }
+    }
+}
+
+// === K4 : Decouverte dynamique du catalogue OpenRouter (texte uniquement) ===
+// Permet a l'utilisateur d'utiliser n'importe quel modele texte OR sans
+// avoir a les declarer manuellement dans models.js. Les modeles fetched sont
+// caches localement (24h) puis fusionnes a MODELS + TARIFS.
+const OR_CATALOG_KEY = 'goudai-or-catalog-text';
+const OR_CATALOG_TTL = 24 * 60 * 60 * 1000; // 24h
+
+function getOrCatalogCache() {
+    try {
+        const raw = localStorage.getItem(OR_CATALOG_KEY);
+        if (!raw) return null;
+        const obj = JSON.parse(raw);
+        if (!obj || !Array.isArray(obj.models)) return null;
+        if (Date.now() - (obj.ts || 0) > OR_CATALOG_TTL) return null;
+        return obj.models;
+    } catch { return null; }
+}
+function setOrCatalogCache(models) {
+    try { localStorage.setItem(OR_CATALOG_KEY, JSON.stringify({ ts: Date.now(), models })); } catch {}
+}
+
+async function fetchOpenRouterCatalog(force) {
+    if (!force) {
+        const cached = getOrCatalogCache();
+        if (cached) return cached;
+    }
+    if (!API_KEYS.openrouter) throw new Error('Cle API OpenRouter manquante.');
+    const res = await fetch('https://openrouter.ai/api/v1/models', {
+        headers: { 'Authorization': 'Bearer ' + API_KEYS.openrouter }
+    });
+    if (!res.ok) throw new Error('OpenRouter /models error ' + res.status);
+    const data = await res.json();
+    const all = Array.isArray(data?.data) ? data.data : [];
+    // Filtrer les modeles texte : architecture.modality === 'text->text' ou
+    // input_modalities contient 'text' ET output_modalities est limite a 'text'.
+    const textOnly = all.filter(m => {
+        const arch = m.architecture || {};
+        const out = arch.output_modalities || [];
+        if (!Array.isArray(out)) return true;
+        return out.length === 0 || (out.length === 1 && out[0] === 'text');
+    });
+    // Normaliser pour MODELS_DATA
+    const normalized = textOnly.map(m => {
+        const pIn = parseFloat(m.pricing?.prompt) || 0;     // $/token
+        const pOut = parseFloat(m.pricing?.completion) || 0;
+        return {
+            id: m.id,
+            label: cleanOrModelLabel(m.name, m.id),
+            editeur: 'openrouter',
+            inputPer1M: pIn * 1e6,
+            outputPer1M: pOut * 1e6,
+            description: (m.description || '').slice(0, 200)
+        };
+    });
+    setOrCatalogCache(normalized);
+    return normalized;
+}
+
+// Helper : retire le prefixe fournisseur du nom d'un modele OpenRouter.
+// Ex : "OpenAI: GPT-5.5" -> "GPT-5.5", "Meta Llama 3.1 70B" -> "Llama 3.1 70B"
+function cleanOrModelLabel(name, id) {
+    if (!name || !id) return name || '';
+    const colonIdx = name.indexOf(':');
+    if (colonIdx > 0 && colonIdx < 30) {
+        const after = name.slice(colonIdx + 1).trim();
+        if (after) return after;
+    }
+    return name;
+}
+
+async function mergeOpenRouterTextModels() {
+    const orModels = await fetchOpenRouterCatalog(false);
+    if (!orModels || orModels.length === 0) return;
+    const existing = new Set(MODELS.map(m => m.id));
+    for (const m of orModels) {
+        if (existing.has(m.id)) continue;
+        MODELS.push({ id: m.id, label: m.label, editeur: m.editeur });
+        TARIFS[m.id] = {
+            editeur: m.editeur,
+            inputPer1M: m.inputPer1M,
+            outputPer1M: m.outputPer1M
+        };
+    }
 }
 
 // --- Convertir les messages internes vers le format de chaque provider ---
@@ -346,6 +436,10 @@ function streamModel(modelId, conversationHistory, onChunk, onDone, onError, sys
             // Zhipu AI (GLM family). Compatible OpenAI Chat Completions.
             // hasThinkTags=true: les modeles GLM-5/5.1 emettent <think>...</think> en mode raisonnement.
             return streamOpenAICompat(modelId, 'https://api.z.ai/api/paas/v4/chat/completions', API_KEYS.zai, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, true, modelParams);
+        case 'openrouter':
+            // K4 : OpenRouter Chat Completions (compat OpenAI). hasThinkTags=true
+            // car certains modeles reasoning (DeepSeek R1, etc.) emettent <think>.
+            return streamOpenAICompat(modelId, 'https://openrouter.ai/api/v1/chat/completions', API_KEYS.openrouter, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, true, modelParams);
         default:
             onError(new Error(`Éditeur inconnu pour le modèle ${modelId}`));
     }

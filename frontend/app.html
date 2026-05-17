@@ -469,9 +469,12 @@
                 <label class="sp-modal-label" for="apikey-zai">Z.ai (Zhipu — GLM-5/5.1/4.7)</label>
                 <div class="apikey-field"><input type="password" id="apikey-zai" class="sp-modal-input apikey-input" placeholder="..."><button type="button" class="apikey-toggle-vis" data-target="apikey-zai" title="Afficher/masquer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
                 <a class="apikey-link" href="https://docs.z.ai/guides/develop/python/introduction" target="_blank" rel="noopener noreferrer">Obtenir une clé Z.ai &rarr;</a>
-                <label class="sp-modal-label" for="apikey-openrouter">OpenRouter (Flux 2)</label>
+                <label class="sp-modal-label" for="apikey-openrouter">OpenRouter (Flux 2 + 300+ modèles texte)</label>
                 <div class="apikey-field"><input type="password" id="apikey-openrouter" class="sp-modal-input apikey-input" placeholder="sk-or-..."><button type="button" class="apikey-toggle-vis" data-target="apikey-openrouter" title="Afficher/masquer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
                 <a class="apikey-link" href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">Obtenir une clé OpenRouter &rarr;</a>
+                <!-- K4 : bouton pour rafraichir le catalogue OpenRouter (auto-decouverte) -->
+                <button id="apikey-or-refresh" type="button" class="sp-modal-btn sp-modal-btn-cancel" style="margin-top:8px;display:inline-flex;align-items:center;gap:8px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg> <span data-i18n-fr="Actualiser le catalogue OpenRouter" data-i18n-en="Refresh OpenRouter catalog">Actualiser le catalogue OpenRouter</span></button>
+                <span id="apikey-or-status" style="margin-left:10px;font-size:12px;color:var(--text-muted)"></span>
             </div>
 
             <!-- Onglet Audio (TTS / STT providers) -->
@@ -645,9 +648,9 @@
     <script src="models.js?v=2"></script>
     <script src="js/faq.js?v=1"></script>
     <script src="js/auth.js"></script>
-    <script src="js/api.js?v=6"></script>
+    <script src="js/api.js?v=7"></script>
     <script src="js/filemanager.js"></script>
-    <script src="js/app.js?v=102"></script>
+    <script src="js/app.js?v=103"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {

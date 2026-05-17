@@ -5107,3 +5107,35 @@ window.updateImageParamsVisibility = updateImageParamsVisibility;
     window.openCmdPalette = openPalette;
 })();
 
+// === K4 : bouton actualiser catalogue OpenRouter ===
+// Permet a l'utilisateur de re-fetcher le catalogue OR (cache 24h sinon).
+// Re-peuple ensuite les MODELS list + custom-select trigger.
+(function() {
+    const btn = document.getElementById('apikey-or-refresh');
+    const status = document.getElementById('apikey-or-status');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+        if (!API_KEYS.openrouter) {
+            if (status) status.textContent = '⚠ Cle OR manquante';
+            return;
+        }
+        btn.disabled = true;
+        if (status) status.textContent = 'Chargement...';
+        try {
+            // Force refresh (true) + merge
+            await fetchOpenRouterCatalog(true);
+            // Reload MODELS depuis MODELS_DATA puis re-merger
+            loadModels();
+            await mergeOpenRouterTextModels();
+            // Rafraichir le dropdown texte
+            if (typeof populateModelSelect === 'function') populateModelSelect();
+            const count = MODELS.filter(m => m.editeur === 'openrouter').length;
+            if (status) status.textContent = `✓ ${count} modeles OR disponibles`;
+        } catch (err) {
+            if (status) status.textContent = '✗ ' + (err.message || 'Erreur');
+        } finally {
+            btn.disabled = false;
+        }
+    });
+})();
+
