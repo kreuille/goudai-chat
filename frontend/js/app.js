@@ -4034,6 +4034,7 @@ function openApiKeysModal() {
     const _zEl = document.getElementById('apikey-zai'); if (_zEl) _zEl.value = API_KEYS.zai || '';
     const _orEl = document.getElementById('apikey-openrouter'); if (_orEl) _orEl.value = API_KEYS.openrouter || '';
     const _lEl = document.getElementById('apikey-local'); if (_lEl) _lEl.value = API_KEYS.local || '';
+    const _ltEl = document.getElementById('apikey-local-token'); if (_ltEl) _ltEl.value = API_KEYS.localToken || '';
     (document.getElementById('apikey-local-status')||{style:{},textContent:'',className:'',checked:false,value:''}).textContent = '';
     (document.getElementById('apikey-local-status')||{style:{},textContent:'',className:'',checked:false,value:''}).className = 'apikey-local-status';
     (document.getElementById('models-error')||{style:{},textContent:'',className:'',checked:false,value:''}).style.display = 'none';
@@ -4074,7 +4075,8 @@ function saveApiKeysFromModal() {
         deepseek:   _val('apikey-deepseek'),
         zai:        _val('apikey-zai'),
         openrouter: _val('apikey-openrouter'),
-        local:      _val('apikey-local')
+        local:      _val('apikey-local'),
+        localToken: _val('apikey-local-token')
     };
     saveApiKeys(keys);
 
@@ -4085,7 +4087,13 @@ function saveApiKeysFromModal() {
     saveAudioSettings({ ttsProvider: tts, sttProvider: stt });
 
     saveBudgetSettings();
-    fetchLocalModels().then(() => populateModelSelect());
+    // K6: si une URL locale est configuree, decouvrir les modeles puis
+    // rafraichir le selecteur. Erreur silencieuse (l'user verra via bouton Tester).
+    if (keys.local && typeof mergeLocalModels === 'function') {
+        mergeLocalModels()
+            .then(() => populateModelSelect && populateModelSelect())
+            .catch(() => {});
+    }
     closeApiKeysModal();
 }
 
@@ -5133,6 +5141,40 @@ function enrichErrorWithExplanation(textEl, err, userMessage, modelUsed, fileNam
         })
         .catch(() => {});
 }
+
+// === K6 : bouton tester la connexion au serveur local (LM Studio / Ollama) ===
+// Lit l'URL + token affiches dans la modale (pas API_KEYS, car l'user a pu
+// modifier sans encore enregistrer), tente un GET /v1/models, affiche le
+// nombre de modeles decouverts ou l'erreur.
+(function() {
+    const btn = document.getElementById('apikey-local-test');
+    const status = document.getElementById('apikey-local-status');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+        const url = (document.getElementById('apikey-local')?.value || '').trim();
+        const token = (document.getElementById('apikey-local-token')?.value || '').trim();
+        if (!url) {
+            if (status) { status.textContent = '⚠ URL requise'; status.style.color = 'var(--text-muted)'; }
+            return;
+        }
+        btn.disabled = true;
+        if (status) { status.textContent = '⏳ Connexion...'; status.style.color = 'var(--text-muted)'; }
+        try {
+            const models = await fetchLocalModels(url, token);
+            if (status) {
+                status.textContent = `✓ ${models.length} modele${models.length > 1 ? 's' : ''} disponible${models.length > 1 ? 's' : ''}`;
+                status.style.color = 'oklch(40% 0.13 158)'; // vert
+            }
+        } catch (err) {
+            if (status) {
+                status.textContent = '✗ ' + (err.message || 'Erreur');
+                status.style.color = 'oklch(56% 0.20 28)'; // rouge
+            }
+        } finally {
+            btn.disabled = false;
+        }
+    });
+})();
 
 // === K4 : bouton actualiser catalogue OpenRouter ===
 // Permet a l'utilisateur de re-fetcher le catalogue OR (cache 24h sinon).
