@@ -475,6 +475,18 @@
                 <!-- K4 : bouton pour rafraichir le catalogue OpenRouter (auto-decouverte) -->
                 <button id="apikey-or-refresh" type="button" class="sp-modal-btn sp-modal-btn-cancel" style="margin-top:8px;display:inline-flex;align-items:center;gap:8px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg> <span data-i18n-fr="Actualiser le catalogue OpenRouter" data-i18n-en="Refresh OpenRouter catalog">Actualiser le catalogue OpenRouter</span></button>
                 <span id="apikey-or-status" style="margin-left:10px;font-size:12px;color:var(--text-muted)"></span>
+
+                <!-- K6 : Section serveur local (LM Studio / Ollama / vLLM / etc.) -->
+                <hr style="margin:18px 0;border:none;border-top:1px solid var(--border-light)">
+                <label class="sp-modal-label" for="apikey-local" data-i18n-fr="Serveur local (LM Studio / Ollama)" data-i18n-en="Local server (LM Studio / Ollama)">Serveur local (LM Studio / Ollama)</label>
+                <input type="text" id="apikey-local" class="sp-modal-input apikey-input" placeholder="http://localhost:1234 ou https://lmstudio-XXX.trycloudflare.com" autocomplete="off">
+                <label class="sp-modal-label" for="apikey-local-token" style="margin-top:8px;font-size:.65rem" data-i18n-fr="Token optionnel (si tunnel sécurisé)" data-i18n-en="Optional token (if secured tunnel)">Token optionnel (si tunnel sécurisé)</label>
+                <div class="apikey-field"><input type="password" id="apikey-local-token" class="sp-modal-input apikey-input" placeholder="Bearer token (optionnel)" autocomplete="off"><button type="button" class="apikey-toggle-vis" data-target="apikey-local-token" title="Afficher/masquer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+                <p style="margin-top:6px;font-size:11.5px;color:var(--text-muted);line-height:1.5">
+                    💡 <span data-i18n-fr="LM Studio : onglet Developer → Start Server + Enable CORS. Pour usage nomade, utilisez un tunnel HTTPS (Cloudflare Tunnel, ngrok)." data-i18n-en="LM Studio: Developer tab → Start Server + Enable CORS. For remote access, use an HTTPS tunnel (Cloudflare Tunnel, ngrok).">LM Studio : onglet Developer → Start Server + Enable CORS. Pour usage nomade, utilisez un tunnel HTTPS (Cloudflare Tunnel, ngrok).</span>
+                </p>
+                <button id="apikey-local-test" type="button" class="sp-modal-btn sp-modal-btn-cancel" style="margin-top:8px;display:inline-flex;align-items:center;gap:8px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> <span data-i18n-fr="Tester et découvrir les modèles" data-i18n-en="Test and discover models">Tester et découvrir les modèles</span></button>
+                <span id="apikey-local-status" style="margin-left:10px;font-size:12px;color:var(--text-muted)"></span>
             </div>
 
             <!-- Onglet Audio (TTS / STT providers) -->
@@ -648,9 +660,9 @@
     <script src="models.js?v=2"></script>
     <script src="js/faq.js?v=1"></script>
     <script src="js/auth.js"></script>
-    <script src="js/api.js?v=8"></script>
+    <script src="js/api.js?v=9"></script>
     <script src="js/filemanager.js"></script>
-    <script src="js/app.js?v=104"></script>
+    <script src="js/app.js?v=105"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {

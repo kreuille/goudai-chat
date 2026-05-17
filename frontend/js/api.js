@@ -9,7 +9,13 @@ var API_KEYS = {
     grok: '',
     deepseek: '',
     zai: '',         // Zhipu AI (GLM-5/5.1/4.7) — endpoint OpenAI-compatible
-    openrouter: ''   // OpenRouter (Flux 2 image models) — wiring image dans une PR ulterieure
+    openrouter: '',  // OpenRouter (Flux 2 image models + 300+ texte K4)
+    // K6 — LM Studio / Ollama / serveur local OpenAI-compatible.
+    // 'local' contient l'URL base (ex: http://localhost:1234 ou
+    // https://lmstudio-arnaud.trycloudflare.com), pas une cle. 'localToken'
+    // est un token Bearer optionnel pour securiser un tunnel public.
+    local: '',
+    localToken: ''
 };
 
 // Modèles et tarifs — chargés depuis models.json par loadModels()
@@ -130,6 +136,49 @@ async function initConfig() {
     // catalogue de modeles texte OR et les fusionner avec MODELS_DATA.
     if (API_KEYS.openrouter) {
         try { await mergeOpenRouterTextModels(); } catch (e) { console.warn('OR catalog:', e); }
+    }
+    // K6 : si une URL LM Studio / serveur local est configuree, decouvrir
+    // les modeles charges et les ajouter au catalogue MODELS.
+    if (API_KEYS.local) {
+        try { await mergeLocalModels(); } catch (e) { console.warn('local models:', e); }
+    }
+}
+
+// === K6 : decouverte dynamique des modeles d'un serveur local OpenAI-compat
+// (LM Studio, Ollama, llama-server, vLLM, etc.) via GET /v1/models.
+// Pas de cache car les modeles charges peuvent changer entre les sessions.
+async function fetchLocalModels(url, token) {
+    if (!url) throw new Error('URL serveur local manquante.');
+    const baseUrl = url.replace(/\/+$/, '');
+    const endpoint = baseUrl.endsWith('/v1') ? baseUrl + '/models' : baseUrl + '/v1/models';
+    const headers = {};
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    let res;
+    try {
+        res = await fetch(endpoint, { headers });
+    } catch (e) {
+        // TypeError "Failed to fetch" = CORS, DNS, ou serveur eteint
+        throw new Error(`Connexion à ${baseUrl} impossible. Verifiez que le serveur tourne et que CORS est active.`);
+    }
+    if (!res.ok) throw new Error(`Serveur local: ${res.status} ${res.statusText}`);
+    const data = await res.json();
+    const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data?.models) ? data.models : []);
+    return list.map(m => ({
+        id: m.id || m.name,
+        label: m.id || m.name,
+        editeur: 'local'
+    })).filter(m => m.id);
+}
+
+async function mergeLocalModels() {
+    const models = await fetchLocalModels(API_KEYS.local, API_KEYS.localToken);
+    if (!models || models.length === 0) return;
+    const existing = new Set(MODELS.map(m => m.id));
+    for (const m of models) {
+        if (existing.has(m.id)) continue;
+        MODELS.push({ id: m.id, label: m.label, editeur: 'local' });
+        // Tarif zero : modeles locaux gratuits
+        TARIFS[m.id] = { editeur: 'local', inputPer1M: 0, outputPer1M: 0 };
     }
 }
 
@@ -440,6 +489,19 @@ function streamModel(modelId, conversationHistory, onChunk, onDone, onError, sys
             // K4 : OpenRouter Chat Completions (compat OpenAI). hasThinkTags=true
             // car certains modeles reasoning (DeepSeek R1, etc.) emettent <think>.
             return streamOpenAICompat(modelId, 'https://openrouter.ai/api/v1/chat/completions', API_KEYS.openrouter, conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, true, modelParams);
+        case 'local': {
+            // K6 : LM Studio / Ollama / serveur OpenAI-compatible. URL stockee
+            // dans API_KEYS.local (base sans /v1), token optionnel pour tunnel.
+            if (!API_KEYS.local) {
+                onError(new Error('URL du serveur local manquante. Renseignez-la dans Configuration > Cles API.'));
+                return;
+            }
+            const baseUrl = API_KEYS.local.replace(/\/+$/, '');
+            const endpoint = baseUrl.endsWith('/v1') ? baseUrl + '/chat/completions' : baseUrl + '/v1/chat/completions';
+            // hasThinkTags=true : Llama 3, Qwen 2.5, DeepSeek R1 distill etc.
+            // peuvent emettre <think>. Le parser le gere de facon transparente.
+            return streamOpenAICompat(modelId, endpoint, API_KEYS.localToken || '', conversationHistory, onChunk, onDone, onError, systemPrompt, onThinkingChunk, signal, true, modelParams);
+        }
         default:
             onError(new Error(`Éditeur inconnu pour le modèle ${modelId}`));
     }
@@ -885,9 +947,13 @@ async function streamOpenAICompat(modelId, baseUrl, apiKey, conversationHistory,
                 };
             }
         }
+        // K6 : si apiKey est vide (cas serveur local sans auth), on omet
+        // completement le header Authorization au lieu d'envoyer "Bearer ".
+        const headers = { 'Content-Type': 'application/json' };
+        if (apiKey) headers['Authorization'] = 'Bearer ' + apiKey;
         const response = await fetch(baseUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+            headers,
             body: JSON.stringify(body),
             signal
         });
