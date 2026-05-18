@@ -41,7 +41,15 @@ document.addEventListener('DOMContentLoaded', () => {
     applyI18n();
     document.addEventListener('change', (e) => {
         if (e.target && e.target.name === 'lang-choice') setLanguage(e.target.value);
+        // P1 : changement du mode de stockage (sync serveur vs local-only)
+        if (e.target && e.target.name === 'storage-choice') {
+            if (typeof setStorageMode === 'function') setStorageMode(e.target.value);
+        }
     });
+    // P1 : restaurer la selection du radio storage-choice au chargement
+    const _mode = (typeof isLocalOnly === 'function' && isLocalOnly()) ? 'local' : 'server';
+    const _radio = document.querySelector('input[name="storage-choice"][value="' + _mode + '"]');
+    if (_radio) _radio.checked = true;
 });
 
 // K6 : la stub "Modèles locaux non supportés" a été supprimée.
@@ -114,6 +122,14 @@ if ('speechSynthesis' in window) {
 }
 
 async function loadAudioSettingsFromServer() {
+    // P1 : mode local-only -> uniquement cache localStorage
+    if (typeof isLocalOnly === 'function' && isLocalOnly()) {
+        try {
+            const cached = JSON.parse(localStorage.getItem('goudai-audio-settings') || '{}');
+            Object.assign(AUDIO_SETTINGS, cached);
+        } catch {}
+        return;
+    }
     try {
         const res = await fetch(`${KIRO_API}/api/user/preferences`, { credentials: 'include' });
         if (res.ok) {
@@ -143,6 +159,8 @@ async function saveAudioSettings(settings) {
     if (settings.roleOptimizeModel) AUDIO_SETTINGS.roleOptimizeModel = settings.roleOptimizeModel;
     if (settings.errorExplainerModel) AUDIO_SETTINGS.errorExplainerModel = settings.errorExplainerModel;
     localStorage.setItem('goudai-audio-settings', JSON.stringify(AUDIO_SETTINGS));
+    // P1 : skip sync serveur en mode local-only
+    if (typeof isLocalOnly === 'function' && isLocalOnly()) return;
     // Sync serveur (non-bloquant : on ignore l'échec, le cache local prend le relais)
     try {
         const getRes = await fetch(`${KIRO_API}/api/user/preferences`, { credentials: 'include' });

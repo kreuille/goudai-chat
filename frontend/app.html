@@ -561,6 +561,15 @@
                     <label class="theme-choice"><input type="radio" name="lang-choice" value="en"><span>🇬🇧 English</span></label>
                     <label class="theme-choice"><input type="radio" name="lang-choice" value="bilingual"><span>🌐 FR · EN</span></label>
                 </div>
+                <!-- P1 : choix du stockage (synchro serveur ou local uniquement) -->
+                <label class="sp-modal-label" style="margin-top:18px" data-i18n-fr="Stockage des données" data-i18n-en="Data storage">Stockage des données</label>
+                <div class="theme-choice-row">
+                    <label class="theme-choice"><input type="radio" name="storage-choice" value="server" checked><span><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6a9 3 0 0 0 18 0V5"/><path d="M3 11v6a9 3 0 0 0 18 0v-6"/></svg><span data-i18n-fr="Serveur GoudAI (sync)" data-i18n-en="GoudAI server (sync)">Serveur GoudAI (sync)</span></span></label>
+                    <label class="theme-choice"><input type="radio" name="storage-choice" value="local"><span><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span data-i18n-fr="Cet appareil uniquement" data-i18n-en="This device only">Cet appareil uniquement</span></span></label>
+                </div>
+                <p style="margin-top:8px;font-size:11.5px;color:var(--text-muted);line-height:1.5">
+                    💡 <span data-i18n-fr="Mode local : clés API, rôles, prompts et préférences restent uniquement sur cet appareil (localStorage). Aucune synchro multi-appareils. Les conversations sont toujours sauvegardées côté serveur." data-i18n-en="Local mode: API keys, roles, prompts and preferences stay on this device only (localStorage). No multi-device sync. Conversations are still saved server-side.">Mode local : clés API, rôles, prompts et préférences restent uniquement sur cet appareil (localStorage). Aucune synchro multi-appareils. Les conversations sont toujours sauvegardées côté serveur.</span>
+                </p>
             </div>
 
             <!-- Onglet Stats : ouvre la modale dashboard existante (deja riche, on ne duplique pas) -->
@@ -665,10 +674,10 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="models.js?v=2"></script>
     <script src="js/faq.js?v=1"></script>
-    <script src="js/auth.js?v=2"></script>
-    <script src="js/api.js?v=9"></script>
+    <script src="js/auth.js?v=3"></script>
+    <script src="js/api.js?v=10"></script>
     <script src="js/filemanager.js"></script>
-    <script src="js/app.js?v=106"></script>
+    <script src="js/app.js?v=107"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
