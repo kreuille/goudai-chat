@@ -20,14 +20,27 @@ router.get('/keys', requireAuth, async (req, res) => {
 });
 
 // ── PUT /api/user/keys ── sauvegarde les clés API chiffrées ──────
+// Sync multi-appareil : tous les providers + URL/token serveur local
+// sont chiffrés et stockés cote serveur. Les clés sont restaurees a
+// la connexion sur n'importe quel appareil (PC, mobile, etc.).
 router.put('/keys', requireAuth, async (req, res) => {
   try {
-    const { openai, anthropic, google, perplexity } = req.body;
+    const b = req.body || {};
+    // Whitelist explicite : tous les providers IA + local + localToken
+    // (URL du serveur LM Studio/Ollama + token Bearer optionnel pour tunnel).
+    // String vide = champ effacé, undefined = pas envoyé.
     const keysObj = {
-      openai:     openai     || '',
-      anthropic:  anthropic  || '',
-      google:     google     || '',
-      perplexity: perplexity || '',
+      openai:     b.openai     || '',
+      anthropic:  b.anthropic  || '',
+      google:     b.google     || '',
+      perplexity: b.perplexity || '',
+      mistral:    b.mistral    || '',
+      grok:       b.grok       || '',
+      deepseek:   b.deepseek   || '',
+      zai:        b.zai        || '',
+      openrouter: b.openrouter || '',
+      local:      b.local      || '',
+      localToken: b.localToken || '',
     };
     const encrypted = encryptApiKeys(keysObj);
     await sheets.updateUser(req.user.id, { api_keys_enc: encrypted });
