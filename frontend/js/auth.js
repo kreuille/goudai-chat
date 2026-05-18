@@ -98,6 +98,27 @@ window.__goudaiApiKeys = {};
   // Pré-remplir localStorage pour que app.js les trouve (rétrocompat)
   if (keys && typeof keys === "object" && Object.keys(keys).length > 0) {
     localStorage.setItem('goudai-apikeys', JSON.stringify(keys));
+    // Fix sync: api.js initConfig() a déjà run (race condition), donc
+    // API_KEYS a été chargé depuis un localStorage potentiellement vide.
+    // On force la mise à jour directe + re-trigger les decouvertes dynamiques
+    // qui dependent des cles (OpenRouter K4, serveur local K6).
+    if (typeof window.API_KEYS === 'object') {
+      Object.assign(window.API_KEYS, keys);
+      // Re-trigger les merges asynchrones si l'utilisateur a configure
+      // openrouter ou un serveur local (auto-discovery des modeles).
+      const promises = [];
+      if (keys.openrouter && typeof mergeOpenRouterTextModels === 'function') {
+        promises.push(mergeOpenRouterTextModels().catch(() => {}));
+      }
+      if (keys.local && typeof mergeLocalModels === 'function') {
+        promises.push(mergeLocalModels().catch(() => {}));
+      }
+      if (promises.length > 0) {
+        Promise.all(promises).then(() => {
+          if (typeof populateModelSelect === 'function') populateModelSelect();
+        });
+      }
+    }
     window.dispatchEvent(new CustomEvent('goudai-keys-ready', { detail: keys }));
   }
 
