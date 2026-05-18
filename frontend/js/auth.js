@@ -91,6 +91,14 @@ window.__goudaiApiKeys = {};
   if (!user) return;
   window.__goudaiUser = user;
 
+  // P1 : mode local-only -> skip toute synchro serveur (cles + userdata).
+  // L'auth Google reste verifiee mais les donnees restent en localStorage.
+  const _localOnly = (() => { try { return localStorage.getItem('goudai-storage-mode') === 'local'; } catch { return false; } })();
+  if (_localOnly) {
+    window.dispatchEvent(new CustomEvent('goudai-keys-ready', { detail: {} }));
+    return;
+  }
+
   // Charger les clés API
   const keys = await loadApiKeysFromServer();
   window.__goudaiApiKeys = keys;
@@ -98,6 +106,27 @@ window.__goudaiApiKeys = {};
   // Pré-remplir localStorage pour que app.js les trouve (rétrocompat)
   if (keys && typeof keys === "object" && Object.keys(keys).length > 0) {
     localStorage.setItem('goudai-apikeys', JSON.stringify(keys));
+    // Fix sync: api.js initConfig() a déjà run (race condition), donc
+    // API_KEYS a été chargé depuis un localStorage potentiellement vide.
+    // On force la mise à jour directe + re-trigger les decouvertes dynamiques
+    // qui dependent des cles (OpenRouter K4, serveur local K6).
+    if (typeof window.API_KEYS === 'object') {
+      Object.assign(window.API_KEYS, keys);
+      // Re-trigger les merges asynchrones si l'utilisateur a configure
+      // openrouter ou un serveur local (auto-discovery des modeles).
+      const promises = [];
+      if (keys.openrouter && typeof mergeOpenRouterTextModels === 'function') {
+        promises.push(mergeOpenRouterTextModels().catch(() => {}));
+      }
+      if (keys.local && typeof mergeLocalModels === 'function') {
+        promises.push(mergeLocalModels().catch(() => {}));
+      }
+      if (promises.length > 0) {
+        Promise.all(promises).then(() => {
+          if (typeof populateModelSelect === 'function') populateModelSelect();
+        });
+      }
+    }
     window.dispatchEvent(new CustomEvent('goudai-keys-ready', { detail: keys }));
   }
 

@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guide LM Studio + Cloudflare Tunnel — GoudAI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+    --accent: oklch(54% 0.20 274);
+    --accent-soft: oklch(94% 0.05 274);
+    --accent-glow: oklch(88% 0.08 274);
+    --text: oklch(18% 0 0);
+    --text-secondary: oklch(38% 0 0);
+    --text-muted: oklch(58% 0 0);
+    --bg: #ffffff;
+    --surface: oklch(97% 0 0);
+    --border: oklch(91% 0 0);
+    --warning-bg: oklch(95% 0.05 80);
+    --warning-border: oklch(75% 0.10 80);
+    --warning-text: oklch(35% 0.13 80);
+    --success-bg: oklch(94% 0.06 158);
+    --success-border: oklch(75% 0.10 158);
+    --success-text: oklch(35% 0.13 158);
+    --danger-bg: oklch(95% 0.05 28);
+    --danger-border: oklch(75% 0.10 28);
+    --danger-text: oklch(40% 0.18 28);
+}
+* { box-sizing: border-box; }
+body {
+    font-family: 'Inter Tight', 'Inter', system-ui, -apple-system, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    margin: 0;
+    padding: 0;
+    line-height: 1.65;
+    font-size: 16px;
+}
+.wrapper {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 40px 32px 80px;
+}
+.toolbar {
+    position: sticky;
+    top: 0;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    z-index: 100;
+    margin-bottom: 24px;
+}
+.brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 1.05rem;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    text-decoration: none;
+}
+.brand svg { flex-shrink: 0; }
+.btn-toolbar {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.btn-toolbar:hover { background: oklch(46% 0.22 274); }
+.btn-toolbar.secondary {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+}
+.btn-toolbar.secondary:hover {
+    color: var(--accent);
+    border-color: var(--accent-glow);
+    background: var(--accent-soft);
+}
+h1 {
+    font-size: 2.2rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    margin: 0 0 8px;
+    line-height: 1.1;
+}
+h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin: 48px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--accent-soft);
+}
+h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin: 32px 0 10px;
+    color: var(--text);
+}
+.lead {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    margin: 0 0 32px;
+    line-height: 1.55;
+}
+p { margin: 10px 0; color: var(--text); }
+ul, ol { padding-left: 22px; }
+li { margin: 6px 0; }
+strong { font-weight: 600; color: var(--text); }
+code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9em;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+pre {
+    background: oklch(18% 0 0);
+    color: oklch(95% 0 0);
+    padding: 16px 20px;
+    border-radius: 10px;
+    overflow-x: auto;
+    margin: 12px 0;
+    font-size: 0.88em;
+    line-height: 1.55;
+}
+pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    color: inherit;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.callout {
+    border-left: 4px solid;
+    padding: 14px 18px;
+    margin: 18px 0;
+    border-radius: 4px 8px 8px 4px;
+}
+.callout.warning {
+    background: var(--warning-bg);
+    border-color: var(--warning-border);
+    color: var(--warning-text);
+}
+.callout.success {
+    background: var(--success-bg);
+    border-color: var(--success-border);
+    color: var(--success-text);
+}
+.callout.tip {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--text);
+}
+.callout.danger {
+    background: var(--danger-bg);
+    border-color: var(--danger-border);
+    color: var(--danger-text);
+}
+.callout strong { color: inherit; }
+.step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    font-weight: 600;
+    margin-right: 10px;
+    font-size: 0.9em;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+.recipe {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 24px 0;
+}
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 16px 0;
+    font-size: 0.93em;
+}
+th, td {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    text-align: left;
+    vertical-align: top;
+}
+th {
+    background: var(--surface);
+    font-weight: 600;
+}
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 40px 0;
+}
+.toc {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 0 0 40px;
+    border: 1px solid var(--border);
+}
+.toc-title {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+.toc ol { margin: 0; padding-left: 22px; }
+.toc li { margin: 4px 0; }
+
+/* Print styles : élimine la toolbar, ajuste les couleurs */
+@media print {
+    .toolbar, .no-print { display: none !important; }
+    body { font-size: 11pt; }
+    .wrapper { max-width: 100%; padding: 0; }
+    pre { background: #f5f5f5 !important; color: #000 !important; border: 1px solid #ddd; }
+    h2 { page-break-after: avoid; }
+    h3 { page-break-after: avoid; }
+    .recipe, .callout { page-break-inside: avoid; }
+    a { color: #000; text-decoration: underline; }
+}
+
+@media (max-width: 600px) {
+    .wrapper { padding: 24px 18px 60px; }
+    .toolbar { padding: 10px 16px; }
+    .toolbar .brand span { display: none; }
+    h1 { font-size: 1.7rem; }
+    h2 { font-size: 1.3rem; }
+    pre { font-size: 0.8em; padding: 12px 14px; }
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar no-print">
+    <a href="/app" class="brand">
+        <svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true">
+            <rect x="3" y="3" width="26" height="26" rx="7" fill="currentColor"/>
+            <path transform="translate(0,0) scale(0.78) translate(4.5,4.5)" d="M22 11h-6a5 5 0 0 0-5 5v0a5 5 0 0 0 5 5h2v-4h-2v-2h6v6a5 5 0 0 1-5 5h-1a9 9 0 0 1-9-9v0a9 9 0 0 1 9-9h6z" fill="#ffffff"/>
+        </svg>
+        <span>goudai</span>
+    </a>
+    <div style="display:flex;gap:8px">
+        <button class="btn-toolbar secondary" onclick="window.history.length > 1 ? window.history.back() : (window.location.href='/app')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Retour à GoudAI
+        </button>
+        <button class="btn-toolbar" onclick="window.print()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Télécharger en PDF
+        </button>
+    </div>
+</div>
+
+<div class="wrapper">
+
+<h1>Utiliser LM Studio avec GoudAI</h1>
+<p class="lead">Guide pas-à-pas pour faire tourner des modèles IA gratuits (Llama, Mistral, Qwen…) sur ton PC et les utiliser depuis GoudAI, même depuis ton téléphone.</p>
+
+<div class="callout tip">
+    <strong>Pour qui ?</strong> Débutants total. Aucune connaissance technique requise — chaque commande est copiable-collable. Compte 15-30 minutes de mise en place la première fois.
+</div>
+
+<div class="toc no-print">
+    <div class="toc-title">Sommaire</div>
+    <ol>
+        <li><a href="#concepts">Comprendre ce qu'on fait</a></li>
+        <li><a href="#prerequis">Pré-requis matériel</a></li>
+        <li><a href="#etape-1">Étape 1 — Installer LM Studio</a></li>
+        <li><a href="#etape-2">Étape 2 — Télécharger un modèle</a></li>
+        <li><a href="#etape-3">Étape 3 — Charger le modèle</a></li>
+        <li><a href="#etape-4">Étape 4 — Démarrer le serveur LM Studio</a></li>
+        <li><a href="#etape-5">Étape 5 — Installer Cloudflare Tunnel</a></li>
+        <li><a href="#etape-6">Étape 6 — Lancer le tunnel</a></li>
+        <li><a href="#etape-7">Étape 7 — Configurer GoudAI</a></li>
+        <li><a href="#etape-8">Étape 8 — Utiliser</a></li>
+        <li><a href="#securite">Sécurité (recommandé)</a></li>
+        <li><a href="#depannage">Dépannage</a></li>
+        <li><a href="#persistance">Persistance après redémarrage</a></li>
+    </ol>
+</div>
+
+<h2 id="concepts">Comprendre ce qu'on fait</h2>
+
+<p>L'objectif : faire tourner un modèle IA <strong>directement sur ton PC</strong> (gratuit, privé) et y accéder depuis GoudAI <strong>peu importe où tu es</strong> (ton PC, ton téléphone, un café…).</p>
+
+<p>Trois briques se complètent :</p>
+
+<table>
+    <thead><tr><th>Brique</th><th>Rôle</th></tr></thead>
+    <tbody>
+        <tr><td><strong>LM Studio</strong></td><td>Application qui télécharge et fait tourner les modèles IA sur ton PC.</td></tr>
+        <tr><td><strong>Cloudflare Tunnel</strong></td><td>Crée une URL publique HTTPS qui pointe vers ton LM Studio. Permet d'y accéder depuis Internet sans toucher à ta box.</td></tr>
+        <tr><td><strong>GoudAI</strong></td><td>L'interface chat qui envoie tes messages au modèle via le tunnel.</td></tr>
+    </tbody>
+</table>
+
+<div class="callout success">
+    <strong>Avantages</strong> : 100% gratuit (pas de coût par token), privé (rien ne sort de ton PC sauf vers Cloudflare qui ne lit pas le contenu), accessible mobile.
+</div>
+
+<h2 id="prerequis">Pré-requis matériel</h2>
+
+<ul>
+    <li>Un PC <strong>Windows / macOS / Linux</strong></li>
+    <li>Idéalement un GPU NVIDIA avec <strong>8 Go de VRAM ou plus</strong> (sinon ça tourne sur CPU mais c'est lent)</li>
+    <li><strong>10 à 20 Go d'espace disque</strong> par modèle téléchargé</li>
+    <li>Une connexion internet stable</li>
+</ul>
+
+<p>Pas de GPU ? Tu peux quand même tester avec un petit modèle (3B paramètres) qui tournera sur CPU à 5-15 tokens/sec.</p>
+
+<hr>
+
+<h2 id="etape-1"><span class="step-num">1</span>Installer LM Studio</h2>
+
+<ol>
+    <li>Va sur <a href="https://lmstudio.ai" target="_blank">https://lmstudio.ai</a></li>
+    <li>Clique <strong>Download</strong> — la bonne version pour ton OS est détectée automatiquement</li>
+    <li>Lance l'installeur, accepte les paramètres par défaut</li>
+    <li>Ouvre LM Studio quand l'install est terminée</li>
+</ol>
+
+<h2 id="etape-2"><span class="step-num">2</span>Télécharger un modèle</h2>
+
+<ol>
+    <li>Clique sur l'icône <strong>🔍 Discover</strong> dans la sidebar gauche</li>
+    <li>Choisis un modèle selon ton PC :</li>
+</ol>
+
+<table>
+    <thead><tr><th>Modèle recommandé</th><th>Taille</th><th>Adapté à</th></tr></thead>
+    <tbody>
+        <tr><td>Llama 3.2 3B Instruct</td><td>~2 Go</td><td>PC modeste / CPU seul</td></tr>
+        <tr><td>Qwen 2.5 7B Instruct</td><td>~5 Go</td><td>PC moyen avec GPU 8 Go</td></tr>
+        <tr><td>Mistral Small 24B / Devstral</td><td>~14 Go</td><td>PC puissant avec GPU 16 Go+</td></tr>
+        <tr><td>Gemma 4 e2b/e4b</td><td>2-4 Go</td><td>Pour tester rapidement</td></tr>
+    </tbody>
+</table>
+
+<ol start="3">
+    <li>Sélectionne la variante <strong>Q4_K_M</strong> (bon compromis qualité / taille) sauf si tu sais ce que tu fais</li>
+    <li>Clique <strong>Download</strong> — attends la fin du téléchargement (peut prendre plusieurs minutes selon ta connexion)</li>
+</ol>
+
+<div class="callout tip">
+    <strong>Astuce</strong> : le suffixe <code>Q4_K_M</code> est une "quantification" — le modèle est compressé pour tenir en mémoire. Q4 = 4 bits par poids, K_M = méthode de compression optimisée. Suffisant pour 99% des usages.
+</div>
+
+<h2 id="etape-3"><span class="step-num">3</span>Charger le modèle</h2>
+
+<ol>
+    <li>Clique sur l'icône <strong>📁 My Models</strong> dans la sidebar</li>
+    <li>Trouve ton modèle téléchargé dans la liste</li>
+    <li>Clique <strong>Load</strong> à côté du nom du modèle</li>
+    <li>Attends quelques secondes — la barre indique "Loaded" quand c'est prêt</li>
+</ol>
+
+<div class="callout warning">
+    <strong>Si erreur "Not enough VRAM"</strong> : ton GPU n'a pas assez de mémoire. Essaie un modèle plus petit, ou ajuste le slider "GPU Offload" pour partager entre GPU et RAM.
+</div>
+
+<h2 id="etape-4"><span class="step-num">4</span>Démarrer le serveur LM Studio</h2>
+
+<ol>
+    <li>Ouvre une fenêtre <strong>PowerShell</strong> (Windows) ou Terminal (macOS/Linux)</li>
+    <li>Tape exactement :</li>
+</ol>
+
+<pre><code>lms server start --cors --port 2903</code></pre>
+
+<p>Tu dois voir s'afficher :</p>
+
+<pre><code>W CORS is enabled. This means any website you visit can use the LM Studio server.
+Success! Server is now running on port 2903</code></pre>
+
+<div class="callout success">
+    <strong>Le serveur tourne !</strong> Laisse cette fenêtre PowerShell ouverte. Si tu la fermes, le serveur s'arrête.
+</div>
+
+<p>Si <code>lms</code> n'est pas reconnu, active la CLI une fois :</p>
+
+<pre><code>&amp; "$env:USERPROFILE\.cache\lm-studio\bin\lms.exe" bootstrap</code></pre>
+
+<p>Puis ferme PowerShell, rouvre-la, et réessaie la commande <code>lms server start</code>.</p>
+
+<h2 id="etape-5"><span class="step-num">5</span>Installer Cloudflare Tunnel</h2>
+
+<p>Cloudflare Tunnel crée une URL HTTPS publique qui pointe vers ton LM Studio. <strong>Gratuit, pas de compte requis</strong> pour l'usage rapide.</p>
+
+<p>Dans PowerShell :</p>
+
+<pre><code>winget install cloudflare.cloudflared</code></pre>
+
+<p>Attends la fin (51 Mo à télécharger). Puis <strong>ferme PowerShell et rouvre-la</strong> pour rafraîchir le PATH.</p>
+
+<div class="callout tip">
+    <strong>macOS</strong> : <code>brew install cloudflared</code><br>
+    <strong>Linux</strong> : voir <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/" target="_blank">documentation Cloudflare</a>.
+</div>
+
+<h2 id="etape-6"><span class="step-num">6</span>Lancer le tunnel</h2>
+
+<p>Dans une <strong>NOUVELLE fenêtre PowerShell</strong> (en garder 2 ouvertes : une pour <code>lms</code>, une pour <code>cloudflared</code>) :</p>
+
+<pre><code>cloudflared tunnel --url http://localhost:2903</code></pre>
+
+<p>Après quelques secondes tu obtiens :</p>
+
+<pre><code>+--------------------------------------------------------------------------------------------+
+|  Your quick Tunnel has been created! Visit it at:                                          |
+|  https://acoustic-nvidia-compressed-alloy.trycloudflare.com                                |
++--------------------------------------------------------------------------------------------+</code></pre>
+
+<p>👉 <strong>Copie cette URL</strong> — c'est elle que tu vas mettre dans GoudAI. Garde la fenêtre PowerShell ouverte (sinon le tunnel meurt).</p>
+
+<div class="callout warning">
+    <strong>L'URL change à chaque relance</strong> de <code>cloudflared</code>. Pour avoir une URL fixe permanente, il faut un compte Cloudflare gratuit + tunnel nommé (voir section <a href="#persistance">Persistance</a>).
+</div>
+
+<h2 id="etape-7"><span class="step-num">7</span>Configurer GoudAI</h2>
+
+<p>Cette étape se fait <strong>depuis n'importe quel appareil</strong> où tu utilises GoudAI : ton PC, ton téléphone, un autre PC…</p>
+
+<ol>
+    <li>Ouvre GoudAI</li>
+    <li>Clique <strong>⚙️ Configuration</strong> dans la sidebar</li>
+    <li>Onglet <strong>Clés API</strong></li>
+    <li>Descends jusqu'à la section <strong>SERVEUR LOCAL (LM STUDIO / OLLAMA)</strong></li>
+    <li>Dans le champ <strong>URL</strong>, colle ton URL Cloudflare (commence par <code>https://</code>)</li>
+    <li>Laisse <strong>Token optionnel</strong> vide pour l'instant</li>
+    <li>Clique <strong>Tester et découvrir les modèles</strong></li>
+</ol>
+
+<p>Tu dois voir apparaître à côté du bouton :</p>
+
+<div class="callout success">
+    <strong>✓ N modèles disponibles</strong> (en vert)
+</div>
+
+<p>Si oui, clique <strong>Enregistrer</strong> tout en bas de la modale.</p>
+
+<h2 id="etape-8"><span class="step-num">8</span>Utiliser ton modèle</h2>
+
+<ol>
+    <li>Dans le sélecteur de modèles texte (en haut de la zone de chat), choisis ton modèle local — il apparaît avec le badge <strong>Local</strong></li>
+    <li>Écris ton message comme d'habitude</li>
+    <li>La réponse est générée par <strong>ton PC</strong>, gratuitement, en local</li>
+</ol>
+
+<div class="callout success">
+    <strong>Coût affiché : Gratuit</strong> — aucun token facturé puisque tout tourne chez toi.
+</div>
+
+<hr>
+
+<h2 id="securite">Sécurité (recommandé)</h2>
+
+<p>L'URL Cloudflare est <strong>devinable</strong> en théorie (mots aléatoires). Pour empêcher quelqu'un qui tomberait dessus d'utiliser ton serveur :</p>
+
+<h3>Activer l'authentification dans LM Studio</h3>
+
+<ol>
+    <li>LM Studio → onglet <strong>Developer</strong></li>
+    <li>Stop le serveur si nécessaire</li>
+    <li>Settings serveur → cocher <strong>Require API Key</strong></li>
+    <li>Une clé du type <code>sk-lm-xxxxxxxx</code> s'affiche — <strong>copie-la</strong></li>
+    <li>Redémarre : <code>lms server start --cors --port 2903</code></li>
+</ol>
+
+<h3>Reporter la clé dans GoudAI</h3>
+
+<ol>
+    <li>Config → Clés API → Serveur local</li>
+    <li>Champ <strong>Token optionnel</strong> → colle ta clé LM Studio</li>
+    <li>Clique <strong>Tester</strong> → doit toujours afficher "✓ N modèles disponibles"</li>
+    <li><strong>Enregistrer</strong></li>
+</ol>
+
+<div class="callout danger">
+    <strong>Ne partage cette clé avec personne</strong>, ni par mail, ni par chat. Elle donne accès complet à ton serveur LM Studio.
+</div>
+
+<hr>
+
+<h2 id="depannage">Dépannage</h2>
+
+<h3>"Failed to fetch" / "0 modèles"</h3>
+<p>Cause la plus fréquente : <strong>CORS désactivé</strong>. Vérifie que tu as bien lancé le serveur avec <code>--cors</code> :</p>
+<pre><code>lms server stop
+lms server start --cors --port 2903</code></pre>
+
+<h3>"API token required"</h3>
+<p>Tu as activé Require API Key dans LM Studio mais oublié de copier la clé dans le champ Token GoudAI. Récupère la clé dans LM Studio et colle-la.</p>
+
+<h3>Le tunnel ne marche plus</h3>
+<p>Vérifie que la fenêtre PowerShell <code>cloudflared</code> est toujours ouverte. Si elle s'est fermée ou si tu as redémarré le PC, l'URL est morte → relance le tunnel et utilise la <strong>nouvelle URL</strong> dans GoudAI.</p>
+
+<h3>Le modèle ne répond pas (timeout)</h3>
+<p>Premier message après chargement = "cold start" du GPU, peut prendre 10-20s. Les messages suivants sont rapides. Si vraiment ça ne répond jamais, regarde l'onglet Developer de LM Studio pour voir les logs.</p>
+
+<h3>Sur Android, ça ne marche pas</h3>
+<p>Vérifie que tu utilises bien l'URL Cloudflare HTTPS, pas une IP locale (<code>localhost</code> ou <code>192.168.x.x</code> ou <code>100.x.x.x</code> Tailscale). Seule une URL publique HTTPS marche depuis un appareil distant.</p>
+
+<hr>
+
+<h2 id="persistance">Persistance après redémarrage</h2>
+
+<p>Par défaut, après chaque redémarrage du PC il faut :</p>
+<ol>
+    <li>Rouvrir LM Studio</li>
+    <li>Recharger le modèle</li>
+    <li>Relancer <code>lms server start --cors --port 2903</code></li>
+    <li>Relancer <code>cloudflared tunnel --url http://localhost:2903</code></li>
+    <li>Mettre à jour la nouvelle URL dans GoudAI</li>
+</ol>
+
+<p>Pour éviter ça, deux options avancées :</p>
+
+<h3>Option A — Démarrage automatique LM Studio</h3>
+<p>LM Studio → Settings (icône ⚙ globale) → activer <strong>"Start with Windows"</strong>. Configure aussi <strong>Just-in-Time Loading</strong> pour que le modèle se charge à la première requête.</p>
+
+<h3>Option B — Tunnel Cloudflare permanent (URL fixe)</h3>
+
+<p>Crée un compte Cloudflare gratuit puis dans PowerShell :</p>
+
+<pre><code>cloudflared tunnel login
+cloudflared tunnel create lmstudio
+cloudflared tunnel route dns lmstudio lmstudio.tondomaine.com</code></pre>
+
+<p>Crée un fichier <code>%USERPROFILE%\.cloudflared\config.yml</code> :</p>
+
+<pre><code>tunnel: lmstudio
+credentials-file: C:\Users\TON-NOM\.cloudflared\TUNNEL-ID.json
+ingress:
+  - hostname: lmstudio.tondomaine.com
+    service: http://localhost:2903
+  - service: http_status:404</code></pre>
+
+<p>Puis installe le tunnel comme service Windows (démarre tout seul au boot) :</p>
+
+<pre><code>cloudflared service install</code></pre>
+
+<p>Désormais tu as une URL <strong>fixe et permanente</strong> : <code>https://lmstudio.tondomaine.com</code>. Tu la mets dans GoudAI une fois pour toutes.</p>
+
+<div class="callout tip">
+    <strong>Pas de domaine ?</strong> Tu peux acheter un .com pour ~10€/an chez Cloudflare Registrar (à prix coûtant). Ou utiliser un sous-domaine gratuit type DuckDNS routé vers ton tunnel.
+</div>
+
+<hr>
+
+<h2 id="recap">Récapitulatif après mise en place</h2>
+
+<p>Chaque fois que tu veux utiliser LM Studio + GoudAI :</p>
+
+<div class="recipe">
+<ol>
+<li>LM Studio est lancé, modèle chargé (auto si tu as activé l'option A)</li>
+<li>Serveur LM Studio actif (<code>lms server start --cors --port 2903</code> dans une PowerShell)</li>
+<li>Tunnel Cloudflare actif (<code>cloudflared tunnel --url http://localhost:2903</code> dans une 2e PowerShell)</li>
+<li>L'URL du tunnel est saisie dans GoudAI Config Clés API</li>
+<li>Tu sélectionnes ton modèle local dans GoudAI et tu chattes 🚀</li>
+</ol>
+</div>
+
+<p style="color:var(--text-muted); font-size:0.85rem; margin-top:60px; text-align:center;">
+    Guide GoudAI · LM Studio + Cloudflare Tunnel · Pour usage personnel uniquement
+</p>
+
+</div>
+
+</body>
+</html>

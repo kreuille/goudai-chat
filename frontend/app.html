@@ -17,7 +17,7 @@
     <meta name="apple-mobile-web-app-title" content="GoudAI Chat">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
 
-    <link rel="stylesheet" href="css/style.css?v=23">
+    <link rel="stylesheet" href="css/style.css?v=25">
     <link rel="stylesheet" href="css/canvas.css?v=47">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <!-- Apply dark mode before paint -->
@@ -436,6 +436,7 @@
                 <button class="config-tab"        data-config-tab="audio"     type="button" data-i18n-fr="Audio"     data-i18n-en="Audio">Audio</button>
                 <button class="config-tab"        data-config-tab="budget"    type="button" data-i18n-fr="Budget"    data-i18n-en="Budget">Budget</button>
                 <button class="config-tab"        data-config-tab="appearance" type="button" data-i18n-fr="Apparence" data-i18n-en="Appearance">Apparence</button>
+                <button class="config-tab"        data-config-tab="privacy"   type="button" data-i18n-fr="Confidentialité" data-i18n-en="Privacy">Confidentialité</button>
                 <button class="config-tab"        data-config-tab="stats"     type="button" data-i18n-fr="Stats"     data-i18n-en="Stats">Stats</button>
                 <button class="config-tab"        data-config-tab="faq"       type="button" data-i18n-fr="FAQ"       data-i18n-en="FAQ">FAQ</button>
                 <button class="config-tab"        data-config-tab="share"     type="button" data-i18n-fr="Partager"  data-i18n-en="Share">Partager</button>
@@ -469,9 +470,30 @@
                 <label class="sp-modal-label" for="apikey-zai">Z.ai (Zhipu — GLM-5/5.1/4.7)</label>
                 <div class="apikey-field"><input type="password" id="apikey-zai" class="sp-modal-input apikey-input" placeholder="..."><button type="button" class="apikey-toggle-vis" data-target="apikey-zai" title="Afficher/masquer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
                 <a class="apikey-link" href="https://docs.z.ai/guides/develop/python/introduction" target="_blank" rel="noopener noreferrer">Obtenir une clé Z.ai &rarr;</a>
-                <label class="sp-modal-label" for="apikey-openrouter">OpenRouter (Flux 2)</label>
+                <label class="sp-modal-label" for="apikey-openrouter">OpenRouter (Flux 2 + 300+ modèles texte)</label>
                 <div class="apikey-field"><input type="password" id="apikey-openrouter" class="sp-modal-input apikey-input" placeholder="sk-or-..."><button type="button" class="apikey-toggle-vis" data-target="apikey-openrouter" title="Afficher/masquer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
                 <a class="apikey-link" href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">Obtenir une clé OpenRouter &rarr;</a>
+                <!-- K4 : bouton pour rafraichir le catalogue OpenRouter (auto-decouverte) -->
+                <button id="apikey-or-refresh" type="button" class="sp-modal-btn sp-modal-btn-cancel" style="margin-top:8px;display:inline-flex;align-items:center;gap:8px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg> <span data-i18n-fr="Actualiser le catalogue OpenRouter" data-i18n-en="Refresh OpenRouter catalog">Actualiser le catalogue OpenRouter</span></button>
+                <span id="apikey-or-status" style="margin-left:10px;font-size:12px;color:var(--text-muted)"></span>
+
+                <!-- K6 : Section serveur local (LM Studio / Ollama / vLLM / etc.) -->
+                <hr style="margin:18px 0;border:none;border-top:1px solid var(--border-light)">
+                <label class="sp-modal-label" for="apikey-local" data-i18n-fr="Serveur local (LM Studio / Ollama)" data-i18n-en="Local server (LM Studio / Ollama)">Serveur local (LM Studio / Ollama)</label>
+                <input type="text" id="apikey-local" class="sp-modal-input apikey-input" placeholder="http://localhost:1234 ou https://lmstudio-XXX.trycloudflare.com" autocomplete="off">
+                <label class="sp-modal-label" for="apikey-local-token" style="margin-top:8px;font-size:.65rem" data-i18n-fr="Token optionnel (si tunnel sécurisé)" data-i18n-en="Optional token (if secured tunnel)">Token optionnel (si tunnel sécurisé)</label>
+                <div class="apikey-field"><input type="password" id="apikey-local-token" class="sp-modal-input apikey-input" placeholder="Bearer token (optionnel)" autocomplete="off"><button type="button" class="apikey-toggle-vis" data-target="apikey-local-token" title="Afficher/masquer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+                <p style="margin-top:6px;font-size:11.5px;color:var(--text-muted);line-height:1.5">
+                    💡 <span data-i18n-fr="LM Studio : onglet Developer → Start Server + Enable CORS. Pour usage nomade, utilisez un tunnel HTTPS (Cloudflare Tunnel, ngrok)." data-i18n-en="LM Studio: Developer tab → Start Server + Enable CORS. For remote access, use an HTTPS tunnel (Cloudflare Tunnel, ngrok).">LM Studio : onglet Developer → Start Server + Enable CORS. Pour usage nomade, utilisez un tunnel HTTPS (Cloudflare Tunnel, ngrok).</span>
+                </p>
+                <!-- K7 : lien vers le guide complet débutants -->
+                <a href="docs/lmstudio-guide.html" target="_blank" rel="noopener" class="apikey-link" style="display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-weight:500;color:var(--accent)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    <span data-i18n-fr="📖 Guide pas-à-pas (débutants) — installation LM Studio + Cloudflare Tunnel" data-i18n-en="📖 Step-by-step guide (beginners) — LM Studio + Cloudflare Tunnel setup">📖 Guide pas-à-pas (débutants) — installation LM Studio + Cloudflare Tunnel</span>
+                </a>
+                <br>
+                <button id="apikey-local-test" type="button" class="sp-modal-btn sp-modal-btn-cancel" style="margin-top:8px;display:inline-flex;align-items:center;gap:8px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> <span data-i18n-fr="Tester et découvrir les modèles" data-i18n-en="Test and discover models">Tester et découvrir les modèles</span></button>
+                <span id="apikey-local-status" style="margin-left:10px;font-size:12px;color:var(--text-muted)"></span>
             </div>
 
             <!-- Onglet Audio (TTS / STT providers) -->
@@ -540,6 +562,75 @@
                     <label class="theme-choice"><input type="radio" name="lang-choice" value="en"><span>🇬🇧 English</span></label>
                     <label class="theme-choice"><input type="radio" name="lang-choice" value="bilingual"><span>🌐 FR · EN</span></label>
                 </div>
+            </div>
+
+            <!-- P2 : onglet Confidentialité — choix du stockage avec details fournisseur/localisation -->
+            <div class="config-tab-panel" data-config-panel="privacy">
+                <p class="apikey-intro" data-i18n-fr="Choisissez où GoudAI sauvegarde vos clés API, rôles, prompts et préférences. Ce choix s'applique à cet appareil." data-i18n-en="Choose where GoudAI saves your API keys, roles, prompts and preferences. This choice applies to this device.">Choisissez où GoudAI sauvegarde vos clés API, rôles, prompts et préférences. Ce choix s'applique à cet appareil.</p>
+
+                <div class="storage-cards">
+                    <label class="storage-card">
+                        <input type="radio" name="storage-choice" value="server" checked>
+                        <div class="storage-card-content">
+                            <div class="storage-card-header">
+                                <svg class="storage-card-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6a9 3 0 0 0 18 0V5"/><path d="M3 11v6a9 3 0 0 0 18 0v-6"/></svg>
+                                <div>
+                                    <div class="storage-card-title" data-i18n-fr="Serveur GoudAI (recommandé)" data-i18n-en="GoudAI server (recommended)">Serveur GoudAI (recommandé)</div>
+                                    <div class="storage-card-tagline" data-i18n-fr="Synchronisé sur tous vos appareils" data-i18n-en="Synced across all your devices">Synchronisé sur tous vos appareils</div>
+                                </div>
+                            </div>
+                            <ul class="storage-card-list">
+                                <li><strong data-i18n-fr="Fournisseur :" data-i18n-en="Provider:">Fournisseur :</strong> <span data-i18n-fr="VPS Ionos (Allemagne, Karlsruhe) + Google Sheets" data-i18n-en="Ionos VPS (Germany, Karlsruhe) + Google Sheets">VPS Ionos (Allemagne, Karlsruhe) + Google Sheets</span></li>
+                                <li><strong data-i18n-fr="Localisation physique :" data-i18n-en="Physical location:">Localisation physique :</strong> <span data-i18n-fr="Data center Ionos Allemagne · IP 87.106.213.25" data-i18n-en="Ionos Germany data center · IP 87.106.213.25">Data center Ionos Allemagne · IP 87.106.213.25</span></li>
+                                <li><strong data-i18n-fr="Chiffrement :" data-i18n-en="Encryption:">Chiffrement :</strong> <span data-i18n-fr="AES-256-GCM avant stockage" data-i18n-en="AES-256-GCM before storage">AES-256-GCM avant stockage</span></li>
+                                <li><strong data-i18n-fr="Synchronisation :" data-i18n-en="Sync:">Synchronisation :</strong> <span data-i18n-fr="Oui, automatique entre PC / mobile / tablette" data-i18n-en="Yes, automatic between PC / mobile / tablet">Oui, automatique entre PC / mobile / tablette</span></li>
+                                <li><strong data-i18n-fr="Si vous changez d'appareil :" data-i18n-en="If you switch device:">Si vous changez d'appareil :</strong> <span data-i18n-fr="Tout retrouvé automatiquement à la reconnexion" data-i18n-en="Everything restored automatically on re-login">Tout retrouvé automatiquement à la reconnexion</span></li>
+                            </ul>
+                        </div>
+                    </label>
+
+                    <label class="storage-card">
+                        <input type="radio" name="storage-choice" value="local">
+                        <div class="storage-card-content">
+                            <div class="storage-card-header">
+                                <svg class="storage-card-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                                <div>
+                                    <div class="storage-card-title" data-i18n-fr="Cet appareil uniquement" data-i18n-en="This device only">Cet appareil uniquement</div>
+                                    <div class="storage-card-tagline" data-i18n-fr="Aucune donnée ne quitte votre navigateur" data-i18n-en="No data leaves your browser">Aucune donnée ne quitte votre navigateur</div>
+                                </div>
+                            </div>
+                            <ul class="storage-card-list">
+                                <li><strong data-i18n-fr="Fournisseur :" data-i18n-en="Provider:">Fournisseur :</strong> <span data-i18n-fr="Aucun — stockage navigateur (localStorage)" data-i18n-en="None — browser storage (localStorage)">Aucun — stockage navigateur (localStorage)</span></li>
+                                <li><strong data-i18n-fr="Localisation physique :" data-i18n-en="Physical location:">Localisation physique :</strong> <span data-i18n-fr="Votre appareil uniquement (ce navigateur Chrome / Safari / Firefox)" data-i18n-en="Your device only (this Chrome / Safari / Firefox browser)">Votre appareil uniquement (ce navigateur Chrome / Safari / Firefox)</span></li>
+                                <li><strong data-i18n-fr="Chiffrement :" data-i18n-en="Encryption:">Chiffrement :</strong> <span data-i18n-fr="Non (sécurité = celle de votre OS et de votre navigateur)" data-i18n-en="No (relies on your OS and browser security)">Non (sécurité = celle de votre OS et de votre navigateur)</span></li>
+                                <li><strong data-i18n-fr="Synchronisation :" data-i18n-en="Sync:">Synchronisation :</strong> <span style="color:oklch(56% 0.20 28)" data-i18n-fr="Aucune — chaque appareil a ses propres données" data-i18n-en="None — each device has its own data">Aucune — chaque appareil a ses propres données</span></li>
+                                <li><strong data-i18n-fr="Si vous videz le cache navigateur :" data-i18n-en="If you clear browser cache:">Si vous videz le cache navigateur :</strong> <span style="color:oklch(56% 0.20 28)" data-i18n-fr="⚠ Données perdues définitivement" data-i18n-en="⚠ Data permanently lost">⚠ Données perdues définitivement</span></li>
+                            </ul>
+                        </div>
+                    </label>
+                </div>
+
+                <h4 class="storage-section-title" data-i18n-fr="Tableau récapitulatif des données" data-i18n-en="Data storage summary table">Tableau récapitulatif des données</h4>
+
+                <table class="storage-table">
+                    <thead>
+                        <tr>
+                            <th data-i18n-fr="Donnée" data-i18n-en="Data">Donnée</th>
+                            <th data-i18n-fr="Serveur GoudAI" data-i18n-en="GoudAI server">Serveur GoudAI</th>
+                            <th data-i18n-fr="Cet appareil" data-i18n-en="This device">Cet appareil</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td data-i18n-fr="Clés API IA" data-i18n-en="AI API keys">Clés API IA</td><td>🔒 Google Sheets chiffré</td><td>💻 localStorage</td></tr>
+                        <tr><td data-i18n-fr="Préférences (thème, langue, audio)" data-i18n-en="Preferences (theme, language, audio)">Préférences (thème, langue, audio)</td><td>🔒 Google Sheets chiffré</td><td>💻 localStorage</td></tr>
+                        <tr><td data-i18n-fr="Rôles et prompts enregistrés" data-i18n-en="Roles and saved prompts">Rôles et prompts enregistrés</td><td>🔒 Google Sheets chiffré</td><td>💻 localStorage</td></tr>
+                        <tr><td data-i18n-fr="Catégories de conversations" data-i18n-en="Conversation categories">Catégories de conversations</td><td>🔒 Google Sheets chiffré</td><td>💻 localStorage</td></tr>
+                        <tr style="color:var(--text-muted)"><td data-i18n-fr="Conversations (messages)" data-i18n-en="Conversations (messages)">Conversations (messages)</td><td colspan="2" style="text-align:center" data-i18n-fr="📁 Toujours sur le serveur (filesystem VPS, par utilisateur)" data-i18n-en="📁 Always on server (VPS filesystem, per user)">📁 Toujours sur le serveur (filesystem VPS, par utilisateur)</td></tr>
+                        <tr style="color:var(--text-muted)"><td data-i18n-fr="Compte (email, nom, avatar)" data-i18n-en="Account (email, name, avatar)">Compte (email, nom, avatar)</td><td colspan="2" style="text-align:center" data-i18n-fr="🪪 Toujours sur le serveur (Google OAuth requise)" data-i18n-en="🪪 Always on server (Google OAuth required)">🪪 Toujours sur le serveur (Google OAuth requise)</td></tr>
+                    </tbody>
+                </table>
+
+                <p class="storage-note" data-i18n-fr="ℹ️ Les conversations et le compte utilisateur sont toujours stockés côté serveur, quel que soit le mode choisi. Le mode local concerne uniquement les données configurables (clés API, rôles, prompts, préférences)." data-i18n-en="ℹ️ Conversations and account info are always stored server-side, regardless of mode. Local mode only applies to configurable data (API keys, roles, prompts, preferences).">ℹ️ Les conversations et le compte utilisateur sont toujours stockés côté serveur, quel que soit le mode choisi. Le mode local concerne uniquement les données configurables (clés API, rôles, prompts, préférences).</p>
             </div>
 
             <!-- Onglet Stats : ouvre la modale dashboard existante (deja riche, on ne duplique pas) -->
@@ -644,10 +735,10 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="models.js?v=2"></script>
     <script src="js/faq.js?v=1"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/api.js?v=6"></script>
+    <script src="js/auth.js?v=3"></script>
+    <script src="js/api.js?v=10"></script>
     <script src="js/filemanager.js"></script>
-    <script src="js/app.js?v=101"></script>
+    <script src="js/app.js?v=107"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {

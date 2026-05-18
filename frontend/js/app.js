@@ -41,13 +41,21 @@ document.addEventListener('DOMContentLoaded', () => {
     applyI18n();
     document.addEventListener('change', (e) => {
         if (e.target && e.target.name === 'lang-choice') setLanguage(e.target.value);
+        // P1 : changement du mode de stockage (sync serveur vs local-only)
+        if (e.target && e.target.name === 'storage-choice') {
+            if (typeof setStorageMode === 'function') setStorageMode(e.target.value);
+        }
     });
+    // P1 : restaurer la selection du radio storage-choice au chargement
+    const _mode = (typeof isLocalOnly === 'function' && isLocalOnly()) ? 'local' : 'server';
+    const _radio = document.querySelector('input[name="storage-choice"][value="' + _mode + '"]');
+    if (_radio) _radio.checked = true;
 });
 
-function fetchLocalModels() {
-    // Modèles locaux non supportés dans GoudAI
-    return Promise.resolve([]);
-}
+// K6 : la stub "Modèles locaux non supportés" a été supprimée.
+// fetchLocalModels() est maintenant défini dans api.js (auto-discovery
+// via /v1/models avec auth Bearer). Cette stub écrasait l'implémentation
+// car app.js est chargé après api.js dans app.html.
 
 // Gestion sidebar mobile
 (function() {
@@ -100,7 +108,9 @@ const AUDIO_SETTINGS = {
     sttProvider: 'openai',
     ttsVoice: 'coral',
     summaryModel: 'gpt-4.1-2025-04-14',
-    roleOptimizeModel: 'claude-sonnet-4-5-20250929'
+    roleOptimizeModel: 'claude-sonnet-4-5-20250929',
+    // K5 : modele utilise pour expliquer les erreurs API obscures a l'utilisateur
+    errorExplainerModel: 'gpt-5.4-mini-2026-03-17'
 };
 
 // C4: pré-chargement voix Web Speech API (Chrome les charge async).
@@ -112,6 +122,14 @@ if ('speechSynthesis' in window) {
 }
 
 async function loadAudioSettingsFromServer() {
+    // P1 : mode local-only -> uniquement cache localStorage
+    if (typeof isLocalOnly === 'function' && isLocalOnly()) {
+        try {
+            const cached = JSON.parse(localStorage.getItem('goudai-audio-settings') || '{}');
+            Object.assign(AUDIO_SETTINGS, cached);
+        } catch {}
+        return;
+    }
     try {
         const res = await fetch(`${KIRO_API}/api/user/preferences`, { credentials: 'include' });
         if (res.ok) {
@@ -139,7 +157,10 @@ async function saveAudioSettings(settings) {
     if (settings.enhanceModel) AUDIO_SETTINGS.enhanceModel = settings.enhanceModel;
     if (settings.summaryModel) AUDIO_SETTINGS.summaryModel = settings.summaryModel;
     if (settings.roleOptimizeModel) AUDIO_SETTINGS.roleOptimizeModel = settings.roleOptimizeModel;
+    if (settings.errorExplainerModel) AUDIO_SETTINGS.errorExplainerModel = settings.errorExplainerModel;
     localStorage.setItem('goudai-audio-settings', JSON.stringify(AUDIO_SETTINGS));
+    // P1 : skip sync serveur en mode local-only
+    if (typeof isLocalOnly === 'function' && isLocalOnly()) return;
     // Sync serveur (non-bloquant : on ignore l'échec, le cache local prend le relais)
     try {
         const getRes = await fetch(`${KIRO_API}/api/user/preferences`, { credentials: 'include' });
@@ -1398,24 +1419,29 @@ const EDITEUR_ORDER = [
     'perplexity', 'openrouter', 'local'
 ];
 
-// R7: ProviderMark avec icones SVG reconnaissables des providers IA
-// (Claude burst, OpenAI flower, Gemini sparkle, etc.) — formes geometriques
-// inspirees des marques publiques, dessinees a la main pour eviter copyright.
+// K3: ProviderMarks utilisent les VRAIS logos SVG des providers IA
+// (depuis Kiro v3.1, sous frontend/images/). Les SVG ont fill="currentColor"
+// donc colorisables via CSS. Couleur de fond/contour derivee du hue par
+// provider. Fallback : un cercle generique pour providers inconnus.
 const PROVIDER_MARKS = {
-    openai:     { hue: 158, svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M21.55 10.13a5.94 5.94 0 0 0-.51-4.88 6 6 0 0 0-6.47-2.88A6 6 0 0 0 4.99 4.62a5.94 5.94 0 0 0-3.97 2.88 6 6 0 0 0 .74 7.04 5.94 5.94 0 0 0 .51 4.88 6 6 0 0 0 6.47 2.88 5.99 5.99 0 0 0 9.58-1.83 5.94 5.94 0 0 0 3.97-2.88 6 6 0 0 0-.74-7.04zM13.07 20.84a4.45 4.45 0 0 1-2.86-1.04l.14-.08 4.74-2.74a.78.78 0 0 0 .39-.68v-6.69l2 1.16a.07.07 0 0 1 .04.05v5.54a4.45 4.45 0 0 1-4.45 4.48zM3.5 16.78A4.45 4.45 0 0 1 2.97 14.3l.14.08 4.74 2.74a.78.78 0 0 0 .79 0l5.79-3.34v2.31a.07.07 0 0 1-.03.06l-4.79 2.77a4.45 4.45 0 0 1-6.11-1.63zM2.26 7.62A4.45 4.45 0 0 1 4.6 5.66v5.64a.78.78 0 0 0 .39.67l5.78 3.34-2 1.15a.07.07 0 0 1-.07 0l-4.78-2.77a4.45 4.45 0 0 1-1.63-6.07zm16.42 3.83-5.79-3.35 2-1.15a.07.07 0 0 1 .07 0l4.79 2.77a4.46 4.46 0 0 1-.67 8.05v-5.64a.78.78 0 0 0-.4-.68zm1.99-2.99-.14-.08-4.74-2.74a.78.78 0 0 0-.79 0L9.21 9V6.66a.07.07 0 0 1 .03-.06l4.79-2.77a4.45 4.45 0 0 1 6.61 4.63zM8.13 12.55l-2-1.15a.07.07 0 0 1-.04-.05V5.81a4.45 4.45 0 0 1 7.31-3.41l-.14.08L8.51 5.21a.78.78 0 0 0-.39.69zm1.08-2.34L11.79 8.7l2.59 1.5v3l-2.59 1.5-2.58-1.5z"/></svg>' },
-    anthropic:  { hue: 28,  svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M13.93 3.5h3.7l6.87 17h-3.7l-1.4-3.62h-7.18l-1.4 3.62H7.12L13.93 3.5zm-.62 10.78h4.94l-2.47-6.4-2.47 6.4zM4.92 3.5h3.7L1.74 20.5H-1.96l6.88-17z" transform="translate(2)"/></svg>' },
-    google:     { hue: 220, svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5L12 2z"/></svg>' },
-    mistral:    { hue: 35,  svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><rect x="2" y="2" width="4" height="4"/><rect x="8" y="2" width="4" height="4"/><rect x="14" y="2" width="4" height="4"/><rect x="20" y="2" width="2" height="4"/><rect x="2" y="8" width="4" height="4"/><rect x="14" y="8" width="4" height="4"/><rect x="2" y="14" width="4" height="4"/><rect x="8" y="14" width="4" height="4"/><rect x="14" y="14" width="4" height="4"/><rect x="2" y="20" width="4" height="2"/><rect x="14" y="20" width="4" height="2"/><rect x="20" y="14" width="2" height="4"/></svg>' },
-    grok:       { hue: 0,   svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M3 3h4l5 7-5 7H3l5-7L3 3zm9 0h4l5 7-5 7h-4l5-7-5-7z"/></svg>' },
-    deepseek:   { hue: 250, svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M22 4c-2 1-4 1.5-6 2-3-2-7-2-10 0C4 5 2.5 4 2 3c0 3 1 5 3 6.5-.5 1-1 2-1 3.5 0 4 4 7 8 7s8-3 8-7c0-1.5-.5-2.5-1-3.5C21 8 22 7 22 4zm-9 12.5c-2.2 0-4-1.5-4-3.5s1.8-3.5 4-3.5 4 1.5 4 3.5-1.8 3.5-4 3.5zm0-5c-.8 0-1.5.7-1.5 1.5s.7 1.5 1.5 1.5 1.5-.7 1.5-1.5-.7-1.5-1.5-1.5z"/></svg>' },
-    perplexity: { hue: 190, svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/></svg>' },
-    zai:        { hue: 280, svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M4 4h16v3l-9 10h9v3H4v-3l9-10H4V4z"/></svg>' },
-    local:      { hue: 270, svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>' },
-    openrouter: { hue: 30,  svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/><circle cx="5" cy="12" r="2" fill="currentColor"/></svg>' }
+    openai:     { hue: 158, file: 'OpenAI.svg' },
+    anthropic:  { hue: 28,  file: 'Anthropic.svg' },
+    google:     { hue: 220, file: 'Google.svg' },
+    mistral:    { hue: 35,  file: 'Mistral.svg' },
+    grok:       { hue: 0,   file: 'Grok.svg' },
+    deepseek:   { hue: 250, file: 'DeepSeek.svg' },
+    perplexity: { hue: 190, file: 'Perplexity.svg' },
+    zai:        { hue: 280, file: 'Z.ai.svg' },
+    openrouter: { hue: 30,  file: 'OpenRouter.svg' },
+    local:      { hue: 270, file: null } // pas de logo officiel, fallback generic
 };
 function providerMarkHtml(editeur) {
-    const p = PROVIDER_MARKS[editeur] || { hue: 270, svg: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>' };
-    return `<span class="provider-mark" style="--provider-hue:${p.hue}" aria-label="${editeur}">${p.svg}</span>`;
+    const p = PROVIDER_MARKS[editeur] || { hue: 270, file: null };
+    if (p.file) {
+        return `<span class="provider-mark" style="--provider-hue:${p.hue}" aria-label="${editeur}"><img src="images/${p.file}" alt="" loading="lazy" /></span>`;
+    }
+    // Fallback : cercle generique
+    return `<span class="provider-mark" style="--provider-hue:${p.hue}" aria-label="${editeur}"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg></span>`;
 }
 
 // Tooltip partagé pour les infos modèle
@@ -2601,6 +2627,7 @@ function regenerateLastResponse() {
                 assistantDiv.classList.remove('streaming');
                 const textEl = assistantDiv.querySelector('.message-text');
                 if (textEl) { textEl.textContent = `Erreur : ${err.message}`; textEl.style.color = '#c00'; }
+                enrichErrorWithExplanation(textEl, err, regenUserMsg?.content || '', currentImageModel);
                 isStreaming = false; currentAbortController = null; updateSendButton(); promptInput.focus();
             },
             regenRefImages,
@@ -2663,6 +2690,7 @@ function regenerateLastResponse() {
                 assistantDiv.classList.remove('streaming');
                 const textEl = assistantDiv.querySelector('.message-text');
                 if (textEl) { textEl.textContent = `Erreur : ${err.message}`; textEl.style.color = '#c00'; }
+                enrichErrorWithExplanation(textEl, err, regenUserMsg?.content || '', regenTextModel);
                 isStreaming = false; currentAbortController = null; updateSendButton(); promptInput.focus();
             },
             spContent,
@@ -2926,6 +2954,7 @@ function sendMessage() {
                     textEl.textContent = `Erreur : ${err.message}`;
                     textEl.style.color = '#c00';
                 }
+                enrichErrorWithExplanation(textEl, err, msg, currentImageModel);
                 isStreaming = false;
                 currentAbortController = null;
                 updateSendButton();
@@ -3022,6 +3051,7 @@ function sendMessage() {
                     textEl.textContent = `Erreur : ${err.message}`;
                     textEl.style.color = '#c00';
                 }
+                enrichErrorWithExplanation(textEl, err, msg, activeTextModel);
                 isStreaming = false;
                 currentAbortController = null;
                 updateSendButton();
@@ -4022,6 +4052,7 @@ function openApiKeysModal() {
     const _zEl = document.getElementById('apikey-zai'); if (_zEl) _zEl.value = API_KEYS.zai || '';
     const _orEl = document.getElementById('apikey-openrouter'); if (_orEl) _orEl.value = API_KEYS.openrouter || '';
     const _lEl = document.getElementById('apikey-local'); if (_lEl) _lEl.value = API_KEYS.local || '';
+    const _ltEl = document.getElementById('apikey-local-token'); if (_ltEl) _ltEl.value = API_KEYS.localToken || '';
     (document.getElementById('apikey-local-status')||{style:{},textContent:'',className:'',checked:false,value:''}).textContent = '';
     (document.getElementById('apikey-local-status')||{style:{},textContent:'',className:'',checked:false,value:''}).className = 'apikey-local-status';
     (document.getElementById('models-error')||{style:{},textContent:'',className:'',checked:false,value:''}).style.display = 'none';
@@ -4062,7 +4093,8 @@ function saveApiKeysFromModal() {
         deepseek:   _val('apikey-deepseek'),
         zai:        _val('apikey-zai'),
         openrouter: _val('apikey-openrouter'),
-        local:      _val('apikey-local')
+        local:      _val('apikey-local'),
+        localToken: _val('apikey-local-token')
     };
     saveApiKeys(keys);
 
@@ -4073,7 +4105,13 @@ function saveApiKeysFromModal() {
     saveAudioSettings({ ttsProvider: tts, sttProvider: stt });
 
     saveBudgetSettings();
-    fetchLocalModels().then(() => populateModelSelect());
+    // K6: si une URL locale est configuree, decouvrir les modeles puis
+    // rafraichir le selecteur. Erreur silencieuse (l'user verra via bouton Tester).
+    if (keys.local && typeof mergeLocalModels === 'function') {
+        mergeLocalModels()
+            .then(() => populateModelSelect && populateModelSelect())
+            .catch(() => {});
+    }
     closeApiKeysModal();
 }
 
@@ -5100,5 +5138,91 @@ window.updateImageParamsVisibility = updateImageParamsVisibility;
 
     // Expose pour debug / autres triggers
     window.openCmdPalette = openPalette;
+})();
+
+// === K5 : enrichissement des messages d'erreur via explainError() ====
+// Affiche l'erreur brute immediatement, puis appelle l'explainer LLM en
+// arriere-plan. Si une explication revient (<12s), l'ajoute en dessous
+// en italique discret. No-op si explainer desactive ou cle manquante.
+function enrichErrorWithExplanation(textEl, err, userMessage, modelUsed, fileNames) {
+    if (!textEl || !err) return;
+    if (typeof explainError !== 'function') return;
+    explainError(userMessage || '', fileNames || [], modelUsed || null, err.message || String(err))
+        .then(explanation => {
+            if (!explanation) return;
+            // Verifie que l'erreur est toujours affichee (pas remplacee par un retry)
+            if (!textEl.isConnected) return;
+            const div = document.createElement('div');
+            div.style.cssText = 'margin-top:8px;font-style:italic;font-size:0.92em;color:var(--text-secondary,#888);border-top:1px dashed currentColor;padding-top:6px;opacity:0.85';
+            div.textContent = '💡 ' + explanation;
+            textEl.appendChild(div);
+        })
+        .catch(() => {});
+}
+
+// === K6 : bouton tester la connexion au serveur local (LM Studio / Ollama) ===
+// Lit l'URL + token affiches dans la modale (pas API_KEYS, car l'user a pu
+// modifier sans encore enregistrer), tente un GET /v1/models, affiche le
+// nombre de modeles decouverts ou l'erreur.
+(function() {
+    const btn = document.getElementById('apikey-local-test');
+    const status = document.getElementById('apikey-local-status');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+        const url = (document.getElementById('apikey-local')?.value || '').trim();
+        const token = (document.getElementById('apikey-local-token')?.value || '').trim();
+        if (!url) {
+            if (status) { status.textContent = '⚠ URL requise'; status.style.color = 'var(--text-muted)'; }
+            return;
+        }
+        btn.disabled = true;
+        if (status) { status.textContent = '⏳ Connexion...'; status.style.color = 'var(--text-muted)'; }
+        try {
+            const models = await fetchLocalModels(url, token);
+            if (status) {
+                status.textContent = `✓ ${models.length} modele${models.length > 1 ? 's' : ''} disponible${models.length > 1 ? 's' : ''}`;
+                status.style.color = 'oklch(40% 0.13 158)'; // vert
+            }
+        } catch (err) {
+            if (status) {
+                status.textContent = '✗ ' + (err.message || 'Erreur');
+                status.style.color = 'oklch(56% 0.20 28)'; // rouge
+            }
+        } finally {
+            btn.disabled = false;
+        }
+    });
+})();
+
+// === K4 : bouton actualiser catalogue OpenRouter ===
+// Permet a l'utilisateur de re-fetcher le catalogue OR (cache 24h sinon).
+// Re-peuple ensuite les MODELS list + custom-select trigger.
+(function() {
+    const btn = document.getElementById('apikey-or-refresh');
+    const status = document.getElementById('apikey-or-status');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+        if (!API_KEYS.openrouter) {
+            if (status) status.textContent = '⚠ Cle OR manquante';
+            return;
+        }
+        btn.disabled = true;
+        if (status) status.textContent = 'Chargement...';
+        try {
+            // Force refresh (true) + merge
+            await fetchOpenRouterCatalog(true);
+            // Reload MODELS depuis MODELS_DATA puis re-merger
+            loadModels();
+            await mergeOpenRouterTextModels();
+            // Rafraichir le dropdown texte
+            if (typeof populateModelSelect === 'function') populateModelSelect();
+            const count = MODELS.filter(m => m.editeur === 'openrouter').length;
+            if (status) status.textContent = `✓ ${count} modeles OR disponibles`;
+        } catch (err) {
+            if (status) status.textContent = '✗ ' + (err.message || 'Erreur');
+        } finally {
+            btn.disabled = false;
+        }
+    });
 })();
 
