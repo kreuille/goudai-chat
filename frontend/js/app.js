@@ -44,10 +44,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-function fetchLocalModels() {
-    // Modèles locaux non supportés dans GoudAI
-    return Promise.resolve([]);
-}
+// K6 : la stub "Modèles locaux non supportés" a été supprimée.
+// fetchLocalModels() est maintenant défini dans api.js (auto-discovery
+// via /v1/models avec auth Bearer). Cette stub écrasait l'implémentation
+// car app.js est chargé après api.js dans app.html.
 
 // Gestion sidebar mobile
 (function() {
