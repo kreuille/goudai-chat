@@ -91,6 +91,14 @@ window.__goudaiApiKeys = {};
   if (!user) return;
   window.__goudaiUser = user;
 
+  // P1 : mode local-only -> skip toute synchro serveur (cles + userdata).
+  // L'auth Google reste verifiee mais les donnees restent en localStorage.
+  const _localOnly = (() => { try { return localStorage.getItem('goudai-storage-mode') === 'local'; } catch { return false; } })();
+  if (_localOnly) {
+    window.dispatchEvent(new CustomEvent('goudai-keys-ready', { detail: {} }));
+    return;
+  }
+
   // Charger les clés API
   const keys = await loadApiKeysFromServer();
   window.__goudaiApiKeys = keys;

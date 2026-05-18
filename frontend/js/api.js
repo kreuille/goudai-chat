@@ -1,3 +1,17 @@
+// === P1 : mode stockage local-only ====================================
+// Permet a l'utilisateur de desactiver toute synchro serveur de ses
+// donnees personnelles (cles API, preferences, roles, prompts).
+// Active via Config > Apparence > Stockage des donnees > "Cet appareil uniquement".
+// Quand actif, tous les fetch vers /api/user/* sont skippes. Les conversations
+// restent sur le serveur (cote stockage filesystem).
+function isLocalOnly() {
+    try { return localStorage.getItem('goudai-storage-mode') === 'local'; } catch { return false; }
+}
+function setStorageMode(mode) {
+    if (mode !== 'local' && mode !== 'server') mode = 'server';
+    try { localStorage.setItem('goudai-storage-mode', mode); } catch {}
+}
+
 // Clés API — déclarées ici (var pour éviter les conflits cross-scripts)
 // Chargées depuis localStorage, configurables via la modale Config
 var API_KEYS = {
@@ -80,6 +94,8 @@ function loadApiKeys() {
 function saveApiKeys(keys) {
     Object.assign(API_KEYS, keys);
     localStorage.setItem('goudai-apikeys', JSON.stringify(API_KEYS));
+    // P1 : skip sync serveur en mode local-only
+    if (isLocalOnly()) return;
     // Sync serveur (async, non bloquant)
     if (typeof saveApiKeysRemote === 'function') {
         saveApiKeysRemote(keys).catch(() => {});
