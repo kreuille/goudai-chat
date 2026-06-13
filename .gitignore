@@ -50,6 +50,11 @@ coverage/
 # ── Docker ───────────────────────────────────────────────────────
 docker-compose.override.yml
 
+# ── Vercel ───────────────────────────────────────────────────────
+.vercel/
+.vercel.local/
+
+
 # ── Assets de dev / réintégration Kiro ──────────────────────────
 # Code de référence Kiro lu localement pour porter ses features.
 # Ne doit pas être embarqué dans l'image Docker ni pousser en prod.
@@ -60,3 +65,7 @@ prompt-reintegration-kiro-features.md
 *.docx
 *.doc
 *.pdf
+
+# Tailscale TLS certs
+*.tail*.ts.net.crt
+*.tail*.ts.net.key
