@@ -1,6 +1,7 @@
 {
   "version": 2,
   "regions": ["fra1"],
+  "outputDirectory": "frontend",
   "rewrites": [
     { "source": "/auth/(.*)",                 "destination": "/api/index" },
     { "source": "/api/user/(.*)",             "destination": "/api/index" },
@@ -10,9 +11,8 @@
     { "source": "/api/conversations",         "destination": "/api/index" },
     { "source": "/api/userdata",              "destination": "/api/index" },
     { "source": "/health",                    "destination": "/api/index" },
-    { "source": "/app",                       "destination": "/frontend/app.html" },
-    { "source": "/",                          "destination": "/frontend/index.html" },
-    { "source": "/(.*)",                      "destination": "/frontend/$1" }
+    { "source": "/app",                       "destination": "/app.html" },
+    { "source": "/",                          "destination": "/index.html" }
   ],
   "functions": {
     "api/index.js": {
