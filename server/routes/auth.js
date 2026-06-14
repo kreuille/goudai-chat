@@ -104,13 +104,20 @@ router.get('/me', requireAuth, async (req, res) => {
   }
 });
 
+function resolveRedirectUri(req) {
+  const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+  const host  = req.headers['x-forwarded-host'] || req.headers.host;
+  if (host) return `${proto}://${host}/auth/google/callback`;
+  return process.env.GOOGLE_REDIRECT_URI;
+}
+
 // ── GET /auth/google ─────────────────────────────────────────────
 // Redirige vers le consentement Google
 router.get('/google', (req, res) => {
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI
+    resolveRedirectUri(req)
   );
   const url = oauth2Client.generateAuthUrl({
     access_type: 'offline',
@@ -129,7 +136,7 @@ router.get('/google/callback', async (req, res) => {
     const oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_REDIRECT_URI
+      resolveRedirectUri(req)
     );
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
