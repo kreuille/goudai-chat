@@ -214,4 +214,4 @@ async function updateUser(id, updates) {
   });
 }
 
-module.exports = { initSheet, findByEmail, findByGoogleId, findById, createUser, updateUser };
+module.exports = { initSheet, findByEmail, findByGoogleId, findById, createUser, updateUser, getAllRows };

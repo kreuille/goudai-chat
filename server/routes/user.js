@@ -98,4 +98,26 @@ router.put('/profile', requireAuth, async (req, res) => {
   }
 });
 
+// TEMP DEBUG — à supprimer après diag
+router.get('/__debug_email_rows', requireAuth, async (req, res) => {
+  try {
+    const me = await sheets.findById(req.user.id);
+    const all = await sheets.getAllRows ? await sheets.getAllRows() : null;
+    const matches = (all || []).filter(r => (r[1] || '').toLowerCase() === (me?.email || '').toLowerCase());
+    res.json({
+      myId: me?.id,
+      myEmail: me?.email,
+      myFolder: me?.drive_folder_id,
+      hasGoogleId: !!me?.google_id,
+      matchCount: matches.length,
+      matches: matches.map(r => ({
+        id: r[0], email: r[1], hasGoogleId: !!r[4], folder: r[6],
+        hasPrefs: !!r[8], hasKeys: !!r[7], created: r[9], lastLogin: r[10],
+      })),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;
