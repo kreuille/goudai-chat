@@ -120,4 +120,37 @@ router.get('/__debug_email_rows', requireAuth, async (req, res) => {
   }
 });
 
+// TEMP DEBUG — vérifie Upstash
+router.get('/__debug_upstash', requireAuth, async (req, res) => {
+  try {
+    const me = await sheets.findById(req.user.id);
+    const { Redis } = require('@upstash/redis');
+    const redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+    const hasUrl = !!process.env.UPSTASH_REDIS_REST_URL;
+    const hasToken = !!process.env.UPSTASH_REDIS_REST_TOKEN;
+    const indexKey = `convs-index:${me.drive_folder_id}`;
+    let smembersErr = null, filenames = null, sample = null;
+    try {
+      filenames = await redis.smembers(indexKey);
+      if (filenames?.length) sample = filenames.slice(0, 3);
+    } catch (e) {
+      smembersErr = e.message;
+    }
+    res.json({
+      hasUrl, hasToken,
+      urlPrefix: (process.env.UPSTASH_REDIS_REST_URL || '').slice(0, 30),
+      tokenLen: (process.env.UPSTASH_REDIS_REST_TOKEN || '').length,
+      indexKey,
+      filenamesCount: filenames?.length,
+      sample,
+      smembersErr,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message, stack: e.stack?.split('\n').slice(0,5) });
+  }
+});
+
 module.exports = router;
